@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="assets/blackbox-logo.svg" width="132" alt="BLACKBOX logo"
+       style="border-radius:22px; margin: 12px auto 4px;" />
+</p>
+
 # BLACKBOX
 
 **Download a machine.**

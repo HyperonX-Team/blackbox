@@ -1,4 +1,7 @@
-# BLACKBOX
+<p align="center">
+  <img src="docs/assets/blackbox-logo.svg" width="110" alt="BLACKBOX logo">
+  <h1 align="center">BLACKBOX</h1>
+</p>
 
 **Download a machine.**
 

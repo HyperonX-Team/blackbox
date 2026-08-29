@@ -8,6 +8,8 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  logo: assets/blackbox-logo.svg
+  favicon: assets/favicon.ico
   features:
     - navigation.sections
     - navigation.top
