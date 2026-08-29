@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+site/
+mkdocs.yml.bak
+.blackbox-tmp*
+*.staging/
+*-work/
+# package build outputs in examples are checked in deliberately:
+# examples/hello/hello.blackbox, examples/datasift/datasift.blackbox,
+# examples/research-repro/research-repro.blackbox, examples/wordcount-node/wordcount.blackbox
+# but stray packages built elsewhere:
+/blackbox-*.blackbox

@@ -1,0 +1,33 @@
+format_version: "1"
+
+name: datasift
+version: "0.1.0"
+description: DataSift - CSV cleaning and exploration appliance
+publisher: BLACKBOX Examples
+
+runtime:
+  type: python
+  version: "3.12"
+
+entrypoint:
+  command: python
+  args:
+    - src/main.py
+
+permissions:
+  filesystem:
+    read:
+      - "./input"
+    write:
+      - "./output"
+  network:
+    enabled: false
+  process:
+    spawn: false
+
+environment:
+  variables:
+    BLACKBOX_PORT: "8765"
+
+interface:
+  type: web

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>research-repro report</title>
+<style>
+ body{background:#0b0e14;color:#dce;font-family:ui-monospace,Consolas,monospace;margin:32px;line-height:1.5}
+ h1{color:#4ade80} h2{color:#8bd;font-size:15px;margin-top:28px}
+ table{border-collapse:collapse} td,th{border:1px solid #234;padding:4px 10px;font-size:12px}
+ .env{background:#111521;border:1px solid #234;padding:10px;border-radius:6px;font-size:12px}
+ img{border:1px solid #234;border-radius:6px;margin:8px 8px 0 0}
+</style></head><body>
+<h1>research-repro</h1>
+<p>Analysis <b>{{ metrics.analysis }}</b> over <b>{{ metrics.rows }}</b> rows from <b>{{ metrics.dataset }}</b>.</p>
+<div class="env">Executed inside a BLACKBOX:
+ python {{ env.python }} · jinja2 {{ env.jinja2 }} · {{ env.executable }}</div>
+
+<h2>Column statistics</h2>
+<table><tr><th>column</th><th>n</th><th>mean</th><th>median</th><th>std</th><th>min</th><th>max</th><th>missing</th></tr>
+{% for c, s in metrics.columns | dictsort %}
+<tr><td>{{ c }}</td><td>{{ metrics.rows - s.missing }}</td><td>{{ '%.3f' | format(s.mean) }}</td>
+<td>{{ '%.3f' | format(s.median) }}</td><td>{{ '%.3f' | format(s.std) }}</td>
+<td>{{ s.min }}</td><td>{{ s.max }}</td><td>{{ s.missing }}</td></tr>
+{% endfor %}</table>
+
+{% if metrics.by_city %}
+<h2>Group summary (city)</h2>
+<table><tr><th>city</th><th>n</th><th>mean temperature_c</th></tr>
+{% for c, s in metrics.by_city | dictsort %}
+<tr><td>{{ c }}</td><td>{{ s.n }}</td><td>{{ '%.3f' | format(s.mean_temperature_c) }}</td></tr>
+{% endfor %}</table>
+{% endif %}
+
+{% if metrics.model %}
+<h2>Model (ordinary least squares, temperature_c vs observation index)</h2>
+<p>slope = {{ '%.4f' | format(metrics.model.slope) }} · intercept = {{ '%.3f' | format(metrics.model.intercept) }}
+· R² = {{ '%.3f' | format(metrics.model.r_squared) }} · n = {{ metrics.model.n }}</p>
+{% endif %}
+{% if metrics.correlation %}
+<h2>Correlation</h2>
+{% for k, v in metrics.correlation.items() %}<p>{{ k }}: r = {{ '%.3f' | format(v) }}</p>{% endfor %}
+{% endif %}
+
+{% if figures %}
+<h2>Figures</h2>
+{% for f in figures %}<img src="{{ f }}" alt="{{ f }}" width="320">{% endfor %}
+{% endif %}
+<p style="margin-top:36px;color:#568">This report was produced by a sealed computational environment.
+The .blackbox package pins the interpreter and every dependency by SHA-256, so any machine reproduces these exact numbers.</p>
+</body></html>

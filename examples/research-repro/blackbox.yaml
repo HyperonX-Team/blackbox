@@ -1,0 +1,33 @@
+format_version: "1"
+
+name: research-repro
+version: "0.1.0"
+description: Research-repro - a sealed scientific analysis environment
+publisher: BLACKBOX Examples
+
+runtime:
+  type: python
+  version: "3.12"
+
+entrypoint:
+  command: python
+  args:
+    - src/analyze.py
+
+permissions:
+  filesystem:
+    read:
+      - "./input"
+    write:
+      - "./output"
+  network:
+    enabled: false
+  process:
+    spawn: false
+
+environment:
+  variables:
+    ANALYSIS_NAME: "temperature-trend-v1"
+
+interface:
+  type: cli

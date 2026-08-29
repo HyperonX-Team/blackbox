@@ -1,0 +1,68 @@
+site_name: BLACKBOX
+site_description: Download a machine — portable, reproducible computational appliances
+site_author: The BLACKBOX Project
+site_url: https://hyperonx-team.github.io/blackbox/
+repo_url: https://github.com/HyperonX-Team/blackbox
+repo_name: HyperonX-Team/blackbox
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: green
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: green
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/HyperonX-Team/blackbox
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Guides:
+      - Creating a package: guide/create.md
+      - Running a package: guide/run.md
+      - Multi-language: guide/multi-language.md
+      - Signing & trust: guide/signing.md
+      - Cache & deduplication: guide/cache.md
+  - Reference:
+      - CLI commands: reference/cli.md
+      - blackbox.yaml manifest: reference/manifest.md
+  - Internals:
+      - Architecture: architecture.md
+      - Package format spec: format.md
+      - Security model: security.md
+      - Roadmap: roadmap.md

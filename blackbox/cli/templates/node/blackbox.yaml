@@ -1,0 +1,29 @@
+format_version: "1"
+
+name: blackbox-template
+version: "0.1.0"
+description: A starter Node BLACKBOX
+publisher: Unknown
+
+runtime:
+  type: node
+  version: "22"
+
+entrypoint:
+  command: node
+  args:
+    - src/index.js
+
+permissions:
+  filesystem:
+    read:
+      - "./input"
+    write:
+      - "./output"
+  network:
+    enabled: false
+  process:
+    spawn: false
+
+interface:
+  type: cli

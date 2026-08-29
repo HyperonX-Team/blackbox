@@ -1,0 +1,33 @@
+format_version: "1"
+
+name: blackbox-template
+version: "0.1.0"
+description: A starter BLACKBOX application
+publisher: Unknown
+
+runtime:
+  type: python
+  version: "3.12"
+
+entrypoint:
+  command: python
+  args:
+    - src/main.py
+
+permissions:
+  filesystem:
+    read:
+      - "./input"
+    write:
+      - "./output"
+  network:
+    enabled: false
+  process:
+    spawn: false
+
+environment:
+  variables:
+    APP_MODE: hello
+
+interface:
+  type: cli

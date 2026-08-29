@@ -1,0 +1,6 @@
+lock_version: 1
+packages: []
+runtime:
+  target: x86_64-pc-windows-msvc
+  type: python
+  version: '3.12'

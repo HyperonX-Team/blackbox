@@ -1,0 +1,22 @@
+format_version: "1"
+name: wordcount
+version: "0.1.0"
+description: Word frequency analysis (Node)
+publisher: Test
+runtime:
+  type: node
+  version: "22"
+entrypoint:
+  command: node
+  args:
+    - src/index.js
+permissions:
+  filesystem:
+    read:
+      - "./input"
+    write:
+      - "./output"
+  network:
+    enabled: false
+interface:
+  type: cli
