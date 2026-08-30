@@ -69,8 +69,12 @@ jobs:
           {
             echo "=== rerun frozen doctor ==="
             "./dist/${{ matrix.out }}" doctor; echo "doctor rc=$?"
-            echo "=== rerun smoke (tail) ==="
-            python packaging/smoke.py "dist/${{ matrix.out }}" 2>&1 | tail -c 4000
+            echo "=== checkout sanity ==="
+            git rev-parse HEAD
+            ls -la blackbox/cli/ | head -n 12
+            python -c "import blackbox, blackbox.cli.commands; print('src cmd file:', blackbox.cli.commands.__file__)"
+            echo "=== pyinstaller warnings mentioning blackbox ==="
+            python -m PyInstaller --noconfirm --log-level WARN packaging/blackbox.spec 2>&1 | grep -iE "blackbox|hidden import|failed to collect" | head -c 4000
           } > dbg.txt 2>&1 || true
           tail -c 60000 dbg.txt > tail.txt || cp dbg.txt tail.txt
           gh issue create --repo "$GITHUB_REPOSITORY" \
