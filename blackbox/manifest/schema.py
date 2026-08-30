@@ -16,12 +16,14 @@ from blackbox.runtime.providers import PythonProvider, NodeProvider
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.\-+]*$")
 ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ENTRYPOINT_NAME_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
+HOST_RE = re.compile(r"^\*?(\.[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?|[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?)$")
 RUNTIME_VERSIONS = {
     "python": set(PythonProvider.PINNED),
     "node": set(NodeProvider.SUPPORTED_MAJORS),
     "native": {"any", ""},
 }
-INTERFACE_TYPES = {"cli", "web"}
+INTERFACE_TYPES = {"cli", "web", "gui"}
 
 
 def _req(d, key, where):
@@ -114,8 +116,53 @@ def load_manifest(text: str) -> dict:
     write_paths = [_validate_relpath(p, "permissions.filesystem.write") for p in _strlist(fs.get("write"), "permissions.filesystem.write")]
     net = _mapping(perms.get("network"), "permissions.network")
     network_enabled = bool(net.get("enabled", False))
+    allow_hosts = []
+    for h in _strlist(net.get("allow"), "permissions.network.allow"):
+        h = str(h).strip().lower()
+        if not HOST_RE.match(h):
+            raise ManifestError(
+                f"permissions.network.allow entry '{h}' is not a hostname. "
+                f"Use exact hosts ('api.example.com') or wildcards ('*.example.com').")
+        allow_hosts.append(h)
     process = _mapping(perms.get("process"), "permissions.process")
     spawn_enabled = bool(process.get("spawn", False))
+
+    limits_block = _mapping(raw.get("limits"), "limits")
+    limits = {}
+    if "memory_mb" in limits_block:
+        v = int(limits_block["memory_mb"])
+        if v <= 0:
+            raise ManifestError("limits.memory_mb must be a positive integer (MiB).")
+        limits["memory_mb"] = v
+    if "cpu_percent" in limits_block:
+        v = int(limits_block["cpu_percent"])
+        if not 1 <= v <= 99:
+            raise ManifestError("limits.cpu_percent must be between 1 and 99.")
+        limits["cpu_percent"] = v
+    if "max_processes" in limits_block:
+        v = int(limits_block["max_processes"])
+        if v <= 0:
+            raise ManifestError("limits.max_processes must be a positive integer.")
+        limits["max_processes"] = v
+    _unknown_limits = set(limits_block) - {"memory_mb", "cpu_percent", "max_processes"}
+    if _unknown_limits:
+        raise ManifestError(f"Unknown limits key(s): {', '.join(sorted(_unknown_limits))}.")
+
+    entrypoints = {}
+    for _ename, _spec in _mapping(raw.get("entrypoints"), "entrypoints").items():
+        _ename = str(_ename)
+        if not ENTRYPOINT_NAME_RE.match(_ename):
+            raise ManifestError(f"entrypoints name '{_ename}' must be lowercase alphanumeric/./-/_ .")
+        _spec = _mapping(_spec, f"entrypoints.{_ename}")
+        _ecmd = str(_req(_spec, "command", f"entrypoints.{_ename}."))
+        _eargs = _strlist(_spec.get("args"), f"entrypoints.{_ename}.args")
+        if rt_type == "python" and _ecmd not in ("python", "python3", "py"):
+            raise ManifestError(f"entrypoints.{_ename}: Python packages must use command 'python'.")
+        if rt_type == "node" and _ecmd != "node":
+            raise ManifestError(f"entrypoints.{_ename}: Node packages must use command 'node'.")
+        if rt_type == "native" and not _ecmd.startswith("./"):
+            raise ManifestError(f"entrypoints.{_ename}: native commands must start with './'.")
+        entrypoints[_ename] = {"command": _ecmd, "args": _eargs}
 
     env_block = _mapping(raw.get("environment"), "environment")
     variables = {}
@@ -144,9 +191,11 @@ def load_manifest(text: str) -> dict:
         "entrypoint": {"command": ep_cmd, "args": ep_args},
         "permissions": {
             "filesystem": {"read": read_paths, "write": write_paths},
-            "network": {"enabled": network_enabled},
+            "network": {"enabled": network_enabled, "allow": allow_hosts},
             "process": {"spawn": spawn_enabled},
         },
+        "limits": limits,
+        "entrypoints": entrypoints,
         "environment": {"variables": variables},
         "interface": {"type": iface_type, "port": iface_port},
         "requirements": str(raw.get("requirements",
@@ -176,7 +225,14 @@ def summarize(manifest: dict) -> str:
     for wp in p["filesystem"]["write"]:
         lines.append(f"    write: {wp}")
     lines.append(f"  network: {'enabled' if p['network']['enabled'] else 'disabled'}")
+    if p["network"]["allow"]:
+        lines.append(f"    allow: {', '.join(p['network']['allow'])}")
+    if manifest.get("limits"):
+        lim = ", ".join(f"{k}={v}" for k, v in sorted(manifest["limits"].items()))
+        lines.append(f"  limits: {lim}")
     lines.append(f"  process spawning: {'allowed' if p['process']['spawn'] else 'denied'}")
     lines.append(f"  environment: {', '.join(f'{k}=...' for k in manifest['environment']['variables']) or 'none'}")
     lines.append(f"  interface: {manifest['interface']['type']}")
+    if manifest.get("entrypoints"):
+        lines.append(f"  subcommands: {', '.join(sorted(manifest['entrypoints']))}")
     return "\n".join(lines)

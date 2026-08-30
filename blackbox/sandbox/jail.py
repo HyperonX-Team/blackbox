@@ -43,6 +43,12 @@ def capability() -> str:
 
 def wrap_command(argv, *, policy, jail_roots, network_enabled, work_dir):
     cap = capability()
+    # sandbox-exec profiles cannot grant WindowServer access, so a GUI package
+    # on macOS would render nothing inside the jail; run it jailed-off (the
+    # runtime shim still enforces the permission contract) and let the runner
+    # print the explanatory note.
+    if policy.get("gui") and bb_platform.os_name() == "macos":
+        return argv, False
     if cap == "bwrap":
         return _bwrap(argv, policy, network_enabled, work_dir), True
     if cap == "sandbox-exec":
@@ -78,6 +84,15 @@ def _bwrap(argv, policy, network_enabled, work_dir):
     for w in policy["write_allowed"]:
         if os.path.isdir(w):
             args += ["--bind", w, w]
+    # GUI appliances need the display sockets + GPU device nodes; these are
+    # bound writable because X11/Wayland clients write to their sockets.
+    if policy.get("gui"):
+        for d in ("/tmp/.X11-unix", "/dev/shm", "/dev/dri"):
+            if os.path.isdir(d):
+                args += ["--bind", d, d]
+        uid_dir = f"/run/user/{os.getuid()}" if hasattr(os, "getuid") else None
+        if uid_dir and os.path.isdir(uid_dir):
+            args += ["--bind", uid_dir, uid_dir]
     work = os.path.realpath(str(work_dir))
     args += ["--bind", work, work]
     args += ["--chdir", work, "--", *argv]

@@ -4,6 +4,7 @@ import io
 import json
 import os
 import zipfile
+import zlib
 
 import yaml
 
@@ -44,7 +45,7 @@ def open_package(path, *, verify=True) -> Package:
         with zipfile.ZipFile(path) as zf:
             names = zf.namelist()
             members = {n: zf.read(n) for n in names}
-    except zipfile.BadZipFile:
+    except (zipfile.BadZipFile, zlib.error, EOFError, OSError):
         raise PackageFormatError(
             f"'{os.path.basename(path)}' is not a readable BLACKBOX package.",
             detail="The file is truncated or not in the .blackbox format.",
@@ -110,7 +111,7 @@ def install(pkg: Package, *, cas=None, quiet=False) -> dict:
     return dirs
 
 
-def prepare_run(pkg: Package, work_dir) -> RunContext:
+def prepare_run(pkg: Package, work_dir, *, data_dir=None) -> RunContext:
     m = pkg.manifest
     rt = m["runtime"]
     provider = get_provider(rt["type"])
@@ -122,7 +123,7 @@ def prepare_run(pkg: Package, work_dir) -> RunContext:
         pin = {k: rmeta[k] for k in ("version", "asset", "url", "sha256") if k in rmeta} or None
     runtime_exe = provider.ensure(rt["version"], rt["target"], pin=pin)
     dirs = install(pkg)
-    return RunContext(
+    ctx = RunContext(
         m,
         app_dir=dirs["application_dir"],
         site_dir=dirs["site_dir"] or "",
@@ -130,6 +131,16 @@ def prepare_run(pkg: Package, work_dir) -> RunContext:
         work_dir=str(work_dir),
         triple=rt["target"],
     )
+    if data_dir:
+        ctx.data_dir = str(data_dir)
+    if fmt.SECRETS in pkg.members:
+        from blackbox.crypto import sealing
+        try:
+            ctx.secrets = sealing.open_sealed(pkg.members[fmt.SECRETS])
+        except Exception as e:   # BlackboxError or crypto failure: run without secrets
+            ctx.secrets = None
+            ctx.sealed_error = str(e).splitlines()[0]
+    return ctx
 
 
 def unpack_all(pkg: Package, dest):

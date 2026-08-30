@@ -18,8 +18,14 @@ import os
 import socket
 import sys
 
+_SHIM_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SHIM_DIR not in sys.path:
+    sys.path.insert(0, _SHIM_DIR)
+
+from netmatch import host_allowed  # noqa: E402
+
 _POLICY_PATH = os.environ.get("BLACKBOX_SANDBOX_POLICY")
-POLICY = {"network": False, "spawn": False, "read_allowed": [], "write_allowed": [], "enforce": True}
+POLICY = {"network": False, "network_allow": [], "spawn": False, "read_allowed": [], "write_allowed": [], "limits": {}, "gui": False, "enforce": True}
 
 if _POLICY_PATH and os.path.isfile(_POLICY_PATH):
     with open(_POLICY_PATH, encoding="utf-8") as _f:
@@ -69,11 +75,14 @@ _orig_create_connection = socket.create_connection
 
 
 def _connect_guard(self, address, *a, **kw):
-    if not POLICY["network"]:
-        host = address[0] if isinstance(address, tuple) else address
-        if self.family in (socket.AF_INET, socket.AF_INET6) and str(host) not in _LOOPBACK:
+    host = address[0] if isinstance(address, tuple) else address
+    if self.family in (socket.AF_INET, socket.AF_INET6) and str(host) not in _LOOPBACK:
+        if not POLICY["network"]:
             raise _violation("outbound network access", f"{host}",
                              "Enable it in blackbox.yaml under permissions.network.enabled and re-pack.")
+        if POLICY.get("network_allow") and not host_allowed(host, POLICY["network_allow"]):
+            raise _violation("network access to a non-allowlisted host", f"{host}",
+                             "Add the host to permissions.network.allow in blackbox.yaml and re-pack.")
     return _orig_connect(self, address, *a, **kw)
 
 
@@ -87,8 +96,12 @@ except Exception:
 
 def _guarded_create_connection(address, *args, **kwargs):
     host = address[0]
-    if not POLICY["network"] and str(host) not in _LOOPBACK:
-        raise _violation("outbound network access", f"{host}", "Network permission is disabled for this package.")
+    if str(host) not in _LOOPBACK:
+        if not POLICY["network"]:
+            raise _violation("outbound network access", f"{host}", "Network permission is disabled for this package.")
+        if POLICY.get("network_allow") and not host_allowed(host, POLICY["network_allow"]):
+            raise _violation("network access to a non-allowlisted host", f"{host}",
+                             "Add the host to permissions.network.allow in blackbox.yaml and re-pack.")
     return _orig_create_connection(address, *args, **kwargs)
 
 

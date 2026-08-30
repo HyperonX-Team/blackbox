@@ -22,5 +22,7 @@ DEPS_LAYER = "dependencies.tar.zst"
 LAYERS_INDEX = "layers.json"
 CHECKSUMS = "checksums.json"
 SIGNATURE = "signature.json"
+SECRETS = "secrets.json"          # optional sealed (encrypted) secret payload
+PROVENANCE = "provenance.json"    # optional build-provenance metadata
 
-MEMBER_ORDER = [MANIFEST, LOCK, APP_LAYER, DEPS_LAYER, LAYERS_INDEX, CHECKSUMS, SIGNATURE]
+MEMBER_ORDER = [MANIFEST, LOCK, APP_LAYER, DEPS_LAYER, LAYERS_INDEX, CHECKSUMS, SIGNATURE, SECRETS, PROVENANCE]

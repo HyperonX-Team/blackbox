@@ -31,6 +31,8 @@ def _keys_dir():
 
 
 def keygen(name: str, publisher: str) -> dict:
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+
     kd = _keys_dir()
     priv_path = kd / f"{name}.key.pem"
     pub_path = kd / f"{name}.pub.pem"
@@ -43,11 +45,23 @@ def keygen(name: str, publisher: str) -> dict:
         serialization.NoEncryption()))
     pub_path.write_bytes(priv.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    # sealing pair (X25519) used by 'blackbox seal' — separate from signing on purpose
+    seal_priv = X25519PrivateKey.generate()
+    seal_key_path = kd / f"{name}.seal.key.pem"
+    seal_pub_path = kd / f"{name}.seal.pub.pem"
+    seal_key_path.write_bytes(seal_priv.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()))
+    seal_pub_path.write_bytes(seal_priv.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
     if os.name != "nt":
-        os.chmod(priv_path, 0o600)
+        for p in (priv_path, seal_key_path):
+            os.chmod(p, 0o600)
     meta = {"name": name, "publisher": publisher, "created": "deterministic-clock-avoided"}
     (kd / f"{name}.meta.json").write_text(json.dumps(meta, sort_keys=True))
-    return {"private": str(priv_path), "public": str(pub_path), "publisher": publisher}
+    return {"private": str(priv_path), "public": str(pub_path),
+            "seal_private": str(seal_key_path), "seal_public": str(seal_pub_path),
+            "publisher": publisher}
 
 
 def _pub_pem_bytes(pub: Ed25519PublicKey) -> bytes:

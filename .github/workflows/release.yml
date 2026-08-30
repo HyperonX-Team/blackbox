@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -22,8 +23,14 @@ jobs:
           - os: ubuntu-22.04      # older glibc => broad Linux compatibility
             asset: blackbox-linux-x86_64
             out: blackbox
+          - os: ubuntu-22.04-arm  # Linux ARM64 (free arm runner on public repos)
+            asset: blackbox-linux-aarch64
+            out: blackbox
           - os: macos-14          # primary mac target: Apple Silicon (ARM64)
             asset: blackbox-macos-aarch64
+            out: blackbox
+          - os: macos-13          # last free Intel macOS runner (x86_64)
+            asset: blackbox-macos-x86_64
             out: blackbox
           - os: windows-latest
             asset: blackbox-windows-x86_64.exe
@@ -66,9 +73,15 @@ jobs:
           - os: ubuntu-22.04
             asset: blackbox-linux-x86_64
             tag: linux-x86_64
+          - os: ubuntu-22.04-arm
+            asset: blackbox-linux-aarch64
+            tag: linux-aarch64
           - os: macos-14
             asset: blackbox-macos-aarch64
             tag: macos-aarch64
+          - os: macos-13
+            asset: blackbox-macos-x86_64
+            tag: macos-x86_64
           - os: windows-latest
             asset: blackbox-windows-x86_64.exe
             tag: windows-x86_64
@@ -132,30 +145,53 @@ jobs:
           path: artifacts
           merge-multiple: false
 
+      # download-artifact nests each artifact in its own directory; `files: out/*`
+      # does not recurse, so every artifact must be hoisted flat into out/ or its
+      # contents are silently dropped from the release (the "missing .exe" bug).
       - name: Flatten artifacts
         run: |
           mkdir -p out
-          find artifacts -type f -printf '%P\n' 2>/dev/null | sort -u || true
-          cp -rL artifacts/. out/ 2>/dev/null || true
-          # move nested example packages up to top level, keeping platform tag in name
-          for d in out/examples-*; do
-            [ -d "$d" ] || continue
-            plat=$(basename "$d" | sed 's/examples-//')
+          shopt -s nullglob
+          for d in artifacts/*/; do
+            name=$(basename "$d")
+            case "$name" in
+              examples-*)
+                plat="${name#examples-}"
+                mkdir -p "out/.examples-$plat"
+                cp -rL "$d". "out/.examples-$plat"/
+                ;;
+              *)
+                find "$d" -maxdepth 3 -type f -exec mv {} out/ \; 2>/dev/null || true
+                ;;
+            esac
+          done
+          # tag per-platform example packages, then drop the staging dirs
+          for d in out/.examples-*; do
+            plat="${d#out/.examples-}"
             for f in "$d"/*.blackbox; do
               base=$(basename "$f" .blackbox)
               mv "$f" "out/${base}.${plat}.blackbox"
             done
-            rmdir "$d" 2>/dev/null || rm -rf "$d"
+            rm -rf "$d"
           done
-          # drop the wrapper dirs left by upload-artifact (sdist-wheel/, *.exe names)
-          if [ -d out/sdist-wheel ]; then mv out/sdist-wheel/* out/ 2>/dev/null; rmdir out/sdist-wheel; fi
           ls -R out
+
+      - name: Compute release tag
+        id: rtag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            # every push gets its own tagged release; run numbers are unique & monotonic
+            echo "name=v0.1.0-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: BLACKBOX ${{ github.ref_name }}
+          tag_name: ${{ steps.rtag.outputs.name }}
+          name: BLACKBOX ${{ steps.rtag.outputs.name }}
           generate_release_notes: true
           files: out/*
           body: |
@@ -191,7 +227,9 @@ jobs:
   #    repo variable PUBLISH_PYPI=true after registering the project on PyPI
   #    with GitHub Actions trusted publishing. No secrets/long-lived tokens.
   publish-pypi:
-    if: vars.PUBLISH_PYPI == 'true'
+    # PyPI rejects re-uploads of the same version, so only publish on real
+    # version tags — never on the per-push build releases.
+    if: vars.PUBLISH_PYPI == 'true' && startsWith(github.ref, 'refs/tags/')
     needs: [build-wheel, release]
     runs-on: ubuntu-22.04
     environment:

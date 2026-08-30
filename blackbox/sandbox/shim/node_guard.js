@@ -13,7 +13,7 @@ const path = require("path");
 const LOOPBACK = new Set(["127.0.0.1", "::1", "localhost"]);
 
 const policyPath = process.env.BLACKBOX_SANDBOX_POLICY;
-let POLICY = { network: false, spawn: false, read_allowed: [], write_allowed: [], enforce: true };
+let POLICY = { network: false, network_allow: [], spawn: false, read_allowed: [], write_allowed: [], limits: {}, gui: false, enforce: true };
 
 if (policyPath && fs.existsSync(policyPath)) {
     try {
@@ -21,6 +21,23 @@ if (policyPath && fs.existsSync(policyPath)) {
     } catch (_e) {
         // keep defaults
     }
+}
+
+function hostAllowed(host) {
+    host = String(host).toLowerCase().replace(/\.+$/, "");
+    const list = POLICY.network_allow || [];
+    if (!list.length) return true;
+    for (const raw of list) {
+        const pat = String(raw).toLowerCase().replace(/\.+$/, "");
+        if (pat === "*") return true;
+        if (pat.startsWith("*.")) {
+            const suffix = pat.slice(1);           // ".example.com"
+            if (host === suffix.slice(1) || host.endsWith(suffix)) return true;
+        } else if (host === pat) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function violation(kind, target, hint) {
@@ -40,9 +57,14 @@ function allowed(target, roots) {
 
 // ---------- network ----------
 function checkHost(host) {
-    if (!POLICY.network && !LOOPBACK.has(String(host))) {
+    if (LOOPBACK.has(String(host))) return;
+    if (!POLICY.network) {
         violation("outbound network access", host,
             "Enable it in blackbox.yaml under permissions.network.enabled and re-pack.");
+    }
+    if ((POLICY.network_allow || []).length && !hostAllowed(host)) {
+        violation("network access to a non-allowlisted host", host,
+            "Add the host to permissions.network.allow in blackbox.yaml and re-pack.");
     }
 }
 

@@ -7,7 +7,8 @@ import zipfile
 
 import yaml
 
-from blackbox import deterministic
+from blackbox import __version__, deterministic
+from blackbox import platform as bb_platform
 from blackbox.dependency import resolver
 from blackbox.errors import BlackboxError
 from blackbox.manifest import load_manifest
@@ -142,6 +143,13 @@ def pack(source_dir=".", output_path=None, *, progress=None, target=None) -> str
     }
     if deps_blob:
         members[fmt.DEPS_LAYER] = deps_blob
+    members[fmt.PROVENANCE] = deterministic.canon_json({
+        "tool": f"blackbox {__version__}",
+        "host": bb_platform.current_triple(),
+        "target": rt["target"],
+        "runtime": {"type": rt["type"], "version": rt["version"]},
+        "layers": [l["digest"] for l in layers],
+    })
 
     buf = io.BytesIO()
     ordered = [k for k in fmt.MEMBER_ORDER if k in members]
