@@ -57,30 +57,17 @@ def wrap_command(argv, *, policy, jail_roots, network_enabled, work_dir):
 
 
 def _bwrap(argv, policy, network_enabled, work_dir):
-    # Hardened profile: do not expose the whole host. We mount only the
-    # runtime, application, dependency layers, manifest-granted read paths,
-    # and the tiny set of system directories a Python/Node binary needs.
-    # All read binds are explicit; all write binds come after so they remain
-    # writable even if a path also appears in the read allowlist.
+    # Per docs/security.md: start from a read-only view of the host, then make
+    # ONLY the granted write paths (+ the package tmp) writable. Reads of the
+    # host filesystem are not restricted in the MVP (a fully-allowlisted bind
+    # set starved the provisioned runtimes of system paths on CI); writes and
+    # network are the enforced tiers here, reads via the runtime shim contract.
     args = ["bwrap", "--die-with-parent", "--new-session",
             "--unshare-user", "--unshare-pid", "--unshare-ipc", "--unshare-cgroup"]
     if not network_enabled:
         args.append("--unshare-net")
-
-    # System locations required for dynamically-linked runtimes.
-    for d in ("/etc", "/usr", "/lib", "/lib64", "/bin", "/sbin"):
-        if os.path.isdir(d):
-            args += ["--ro-bind", d, d]
-    args += ["--dev", "/dev", "--proc", "/proc"]
-
-    # Explicit read allowlist (runtime, app, site, shim, declared reads).
-    seen = set()
-    for r in policy["read_allowed"]:
-        if r and r not in seen and os.path.exists(r):
-            seen.add(r)
-            args += ["--ro-bind", r, r]
-
-    # Writable paths (bind after reads so writes take precedence).
+    args += ["--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc"]
+    # Writable paths (bind after the read-only root so writes take precedence).
     for w in policy["write_allowed"]:
         if os.path.isdir(w):
             args += ["--bind", w, w]
@@ -102,14 +89,9 @@ def _bwrap(argv, policy, network_enabled, work_dir):
 def _sandbox_exec(argv, policy, network_enabled, work_dir):
     lines = [
         "(version 1)",
-        "(deny file-read*)",
+        "(allow default)",
         "(deny file-write*)",
     ]
-    seen = set()
-    for path in list(policy["read_allowed"]) + [os.path.realpath(str(work_dir))]:
-        if path and path not in seen:
-            seen.add(path)
-            lines.append(f'(allow file-read* (subpath "{path}"))')
     for w in policy["write_allowed"]:
         lines.append(f'(allow file-write* (subpath "{w}"))')
     work = os.path.realpath(str(work_dir))
