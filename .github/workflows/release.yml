@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write   # create releases + upload assets
+  issues: write     # CI self-reporting of smoke failures
 
 concurrency:
   group: release-${{ github.ref }}-v2
@@ -51,7 +52,20 @@ jobs:
         run: python -m PyInstaller --noconfirm packaging/blackbox.spec
 
       - name: Smoke the binary before shipping it
-        run: python packaging/smoke.py "dist/${{ matrix.out }}"
+        shell: bash
+        run: |
+          set -o pipefail
+          python packaging/smoke.py "dist/${{ matrix.out }}" 2>&1 | tee smoke.log
+
+      - name: Report smoke failure (self-debugging)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "smoke failure: ${{ matrix.os }} run ${{ github.run_id }}" \
+            --body-file smoke.log || true
 
       - name: Rename to platform asset
         shell: bash
