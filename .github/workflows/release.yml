@@ -51,21 +51,25 @@ jobs:
       - name: Build standalone binary
         run: python -m PyInstaller --noconfirm packaging/blackbox.spec
 
+      - name: Verify frozen imports (doctor)
+        run: "dist/${{ matrix.out }} doctor"
+
       - name: Smoke the binary before shipping it
         shell: bash
         run: |
           set -o pipefail
           python packaging/smoke.py "dist/${{ matrix.out }}" 2>&1 | tee smoke.log
 
-      - name: Report smoke failure (self-debugging)
+      - name: Report failure logs (self-debugging)
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          gh run view ${{ github.run_id }} --job ${{ github.job }} --log > job.log 2>&1 || true
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "smoke failure: ${{ matrix.os }} run ${{ github.run_id }}" \
-            --body-file smoke.log || true
+            --title "ci failure: ${{ matrix.os }} run ${{ github.run_id }}" \
+            --body-file job.log || true
 
       - name: Rename to platform asset
         shell: bash
