@@ -66,10 +66,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh run view ${{ github.run_id }} --job ${{ github.job }} --log > job.log 2>&1 || true
+          gh run view ${{ github.run_id }} --log > job.log 2>&1 || true
+          tail -c 60000 job.log > tail.log || cp job.log tail.log
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "ci failure: ${{ matrix.os }} run ${{ github.run_id }}" \
-            --body-file job.log || true
+            --body-file tail.log || true
 
       - name: Rename to platform asset
         shell: bash
