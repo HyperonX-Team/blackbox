@@ -66,11 +66,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh run view ${{ github.run_id }} --log > job.log 2>&1 || true
-          tail -c 60000 job.log > tail.log || cp job.log tail.log
+          {
+            echo "=== rerun frozen doctor ==="
+            "./dist/${{ matrix.out }}" doctor; echo "doctor rc=$?"
+            echo "=== rerun smoke (tail) ==="
+            python packaging/smoke.py "dist/${{ matrix.out }}" 2>&1 | tail -c 4000
+          } > dbg.txt 2>&1 || true
+          tail -c 60000 dbg.txt > tail.txt || cp dbg.txt tail.txt
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "ci failure: ${{ matrix.os }} run ${{ github.run_id }}" \
-            --body-file tail.log || true
+            --body-file tail.txt || true
 
       - name: Rename to platform asset
         shell: bash
