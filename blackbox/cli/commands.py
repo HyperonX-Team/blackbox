@@ -860,8 +860,8 @@ WantedBy=default.target
             r = subprocess.run([systemctl, "--user", "enable", "--now", f"blackbox-{name}.service"],
                                check=False, capture_output=True, text=True)
             if r.returncode != 0:
-                print(f"  systemctl: {r.stderr.strip() or 'enable failed — start it with: '
-                          f'systemctl --user start blackbox-{name}'}")
+                msg = r.stderr.strip() or f"enable failed — start it with: systemctl --user start blackbox-{name}"
+                print(f"  systemctl: {msg}")
         else:
             print("  systemd user session not found — unit written; start it inside your user session.")
         print(f"SERVICE  '{name}' installed: {unit}")
