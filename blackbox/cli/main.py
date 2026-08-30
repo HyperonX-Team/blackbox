@@ -4,6 +4,7 @@ import argparse
 import sys
 
 from blackbox import __version__
+from blackbox.cli import commands
 from blackbox.errors import BlackboxError, render_error
 from blackbox.storage import paths
 
@@ -161,7 +162,6 @@ def main(argv=None) -> int:
 
 
 def _dispatch(args) -> int:
-    from blackbox.cli import commands
     return {
         "init": commands.cmd_init,
         "pack": commands.cmd_pack,
