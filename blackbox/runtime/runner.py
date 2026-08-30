@@ -63,7 +63,7 @@ def _shim_dir() -> str:
     dest = paths.home() / "sandbox-shim"
     dest.mkdir(parents=True, exist_ok=True)
     shim_src = Path(__file__).resolve().parent.parent / "sandbox" / "shim"
-    for name in ("sitecustomize.py", "node_guard.js"):
+    for name in ("sitecustomize.py", "node_guard.js", "netmatch.py"):
         src = shim_src / name
         if not src.exists():
             continue

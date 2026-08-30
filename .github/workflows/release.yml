@@ -10,7 +10,7 @@ permissions:
   contents: write   # create releases + upload assets
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref }}-v2
   cancel-in-progress: false
 
 jobs:
@@ -29,9 +29,8 @@ jobs:
           - os: macos-14          # primary mac target: Apple Silicon (ARM64)
             asset: blackbox-macos-aarch64
             out: blackbox
-          - os: macos-13          # last free Intel macOS runner (x86_64)
-            asset: blackbox-macos-x86_64
-            out: blackbox
+          # note: no free Intel macOS runner exists for this repo (macos-13 stays
+          # queued forever), so x86_64 macOS binaries are not produced.
           - os: windows-latest
             asset: blackbox-windows-x86_64.exe
             out: blackbox.exe
@@ -79,9 +78,6 @@ jobs:
           - os: macos-14
             asset: blackbox-macos-aarch64
             tag: macos-aarch64
-          - os: macos-13
-            asset: blackbox-macos-x86_64
-            tag: macos-x86_64
           - os: windows-latest
             asset: blackbox-windows-x86_64.exe
             tag: windows-x86_64

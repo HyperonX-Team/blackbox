@@ -17,6 +17,7 @@ from blackbox.manifest import load_manifest, summarize
 from blackbox.packaging import builder, format as fmt, reader
 from blackbox.runtime import runner
 from blackbox.runtime.manager import RuntimeManager
+from blackbox.sandbox import jail
 from blackbox.sandbox.policy import build_policy
 from blackbox.storage import paths
 from blackbox.storage.cas import CAS
