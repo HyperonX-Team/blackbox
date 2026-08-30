@@ -403,6 +403,40 @@ permissions:
         assert rc == 0 and "NODE v22." in out
         assert os.path.isfile("wordy-work/output/ok.txt")
 
+    def test_node_network_denied(self, monkeypatch, tmp_path, capsys, needs_network):
+        if shutil.which("npm") is None:
+            pytest.skip("npm not available on host")
+        _fresh_cwd(monkeypatch, tmp_path)
+        manifest = self.NODE_YAML
+        proj = make_project(
+            tmp_path, "netnode", main_py="", manifest=manifest,
+            files={"package.json": json.dumps({"name": "netnode", "version": "1.0.0"}),
+                   "src/index.js": "require('net').createConnection(80,'example.com');"
+                                   "console.log('NOT BLOCKED');\n"})
+        rc, _ = run_cli("pack", proj)
+        assert rc == 0
+        rc, _ = run_cli("run", "--yes", os.path.join(proj, "netnode.blackbox"))
+        captured = capsys.readouterr()
+        out = captured.out
+        print("DEBUG net rc=", rc, "out=", repr(out))
+        assert rc != 0 and "SANDBOX VIOLATION" in out and "NOT BLOCKED" not in out
+
+    def test_node_spawn_denied(self, monkeypatch, tmp_path, capsys, needs_network):
+        if shutil.which("npm") is None:
+            pytest.skip("npm not available on host")
+        _fresh_cwd(monkeypatch, tmp_path)
+        manifest = self.NODE_YAML.replace("spawn: false", "spawn: false  # denied")
+        proj = make_project(
+            tmp_path, "spawnnode", main_py="", manifest=manifest,
+            files={"package.json": json.dumps({"name": "spawnnode", "version": "1.0.0"}),
+                   "src/index.js": "require('child_process').spawn(process.execPath,['-e','']);"
+                                   "console.log('NOT BLOCKED');\n"})
+        rc, _ = run_cli("pack", proj)
+        assert rc == 0
+        rc, _ = run_cli("run", "--yes", os.path.join(proj, "spawnnode.blackbox"))
+        out = capsys.readouterr().out
+        assert rc != 0 and "SANDBOX VIOLATION" in out and "NOT BLOCKED" not in out
+
 
 @pytest.mark.heavy
 class TestNativeRuntime:

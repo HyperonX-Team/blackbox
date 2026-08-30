@@ -39,7 +39,7 @@ include = ["blackbox*"]
 
 [tool.setuptools.package-data]
 blackbox = [
-    "sandbox/shim/*.py",
+    "sandbox/shim/*",
     "cli/templates/*",
     "cli/templates/*/*",
     "cli/templates/*/*/*",

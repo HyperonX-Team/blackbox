@@ -49,11 +49,15 @@ class RunContext:
 def _shim_dir() -> str:
     dest = paths.home() / "sandbox-shim"
     dest.mkdir(parents=True, exist_ok=True)
-    src = Path(__file__).resolve().parent.parent / "sandbox" / "shim" / "sitecustomize.py"
-    dest_file = dest / "sitecustomize.py"
-    payload = src.read_bytes()
-    if not dest_file.exists() or dest_file.read_bytes() != payload:
-        dest_file.write_bytes(payload)
+    shim_src = Path(__file__).resolve().parent.parent / "sandbox" / "shim"
+    for name in ("sitecustomize.py", "node_guard.js"):
+        src = shim_src / name
+        if not src.exists():
+            continue
+        dest_file = dest / name
+        payload = src.read_bytes()
+        if not dest_file.exists() or dest_file.read_bytes() != payload:
+            dest_file.write_bytes(payload)
     return str(dest)
 
 
@@ -76,7 +80,7 @@ def build_launch(ctx: RunContext, extra_args=None) -> dict:
         runtime_root = exe_dir if is_win else os.path.dirname(exe_dir)
         runtime_root = os.path.realpath(runtime_root)
 
-    use_shim = rtype == "python"  # the in-process guard is a Python mechanism
+    use_shim = rtype in ("python", "node")  # languages with an in-process guard shim
     policy = build_policy(
         m,
         app_dir=ctx.app_dir,
@@ -107,8 +111,12 @@ def build_launch(ctx: RunContext, extra_args=None) -> dict:
     env.update(provider.env(ctx.runtime_exe, ctx.site_dir, ctx.app_dir, triple))
     if use_shim and env.get("PYTHONPATH"):
         env["PYTHONPATH"] = _shim_dir() + os.pathsep + env["PYTHONPATH"]
-    elif use_shim:
+    elif rtype == "python":
         env["PYTHONPATH"] = _shim_dir()
+    if rtype == "node":
+        guard = os.path.join(_shim_dir(), "node_guard.js")
+        if os.path.exists(guard):
+            env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + " --require " + guard).strip()
     env.update(m["environment"]["variables"])
 
     argv = provider.resolve_command(m["entrypoint"]["command"],
@@ -122,8 +130,6 @@ def build_launch(ctx: RunContext, extra_args=None) -> dict:
         network_enabled=m["permissions"]["network"]["enabled"],
         work_dir=ctx.work_dir,
     )
-    if is_win:  # no Windows platform jail in the MVP; the shim (python) enforces
-        wrapped, jailed = argv, False
     tiers = (["platform jail"] if jailed else []) + (["runtime shim"] if use_shim else [])
     if not tiers:
         tiers = ["environment isolation only"]

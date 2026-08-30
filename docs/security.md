@@ -49,22 +49,29 @@ which one it used* on every run (`[platform jail + runtime shim]`,
   if present and functional (we *probe* it — a present-but-blocked bwrap
   degrades honestly to the shim tier) — unshared user/PID/IPC/cgroup
   namespaces, `--unshare-net` whenever `network.enabled: false` (kernel-level
-  egress denial), the host mounted **read-only** (`--ro-bind / /`), and
-  writable binds created **only** for the granted `filesystem.write` paths
-  plus the package work directory. Reads of the broader host filesystem are
-  not restricted in the MVP (see limits below); writes and network are.
-* **macOS**: `sandbox-exec` with a generated profile (deny file-write*; allow
-  only granted subpaths; deny network* unless granted).
+  egress denial), writable binds created **only** for the granted
+  `filesystem.write` paths plus the package work directory, and read access
+  restricted to the runtime, app, dependency layers, declared
+  `filesystem.read` paths, and the small set of system directories required
+  by the interpreter (`/etc`, `/usr`, `/lib`, `/lib64`, `/bin`, `/sbin`,
+  `/dev`, `/proc`). Host home directories, `/tmp`, `/var`, `/root`, etc. are
+  not mounted.
+* **macOS**: `sandbox-exec` with a generated profile that denies `file-read*`
+  and `file-write*` by default, then allows reads only for the runtime, app,
+  dependency layers, declared `filesystem.read` paths, and the package work
+  directory; write access is allowed only for declared write paths and the
+  work directory; `network*` is denied unless `network.enabled: true`.
 
 ### Tier 2 — Runtime shim (in-process; always on for Python)
 
-A `sitecustomize.py` loaded inside the bundled interpreter enforces the
-materialized policy: outbound `socket` connects to non-loopback addresses are
-blocked when `network.enabled: false`; `subprocess`/`os.exec*`/`os.system`
-are blocked when `process.spawn: false`; `open()` for writing outside the
-granted roots raises a clear `SANDBOX VIOLATION` (exit code 76) instead of
-touching the disk. Node and native packages run with the policy materialized
-but no equivalent in-process guard yet — they rely on Tier 1 where present,
+A `sitecustomize.py` loaded inside the bundled Python interpreter and a
+Node.js loader hook (`node_guard.js`) loaded through `NODE_OPTIONS` enforce
+the materialized policy: outbound `socket` connects to non-loopback addresses are
+blocked when `network.enabled: false`; `subprocess`/`os.system`/`child_process`
+are blocked when `process.spawn: false`; file writes outside the granted roots
+raise a clear `SANDBOX VIOLATION` (exit code 76) instead of touching the disk.
+Native packages run with the policy materialized inside the platform jail but
+have no equivalent in-process guard yet — they rely on Tier 1 where present,
 or Tier 3.
 
 ### Tier 3 — Environment isolation (minimum everywhere)
