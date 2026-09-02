@@ -5,7 +5,7 @@
 
 **Download a machine.**
 
-📚 **Documentation: <https://hyperonx-team.github.io/blackbox/>**
+ **Documentation: <https://hyperonx-team.github.io/blackbox/>**
 
 A BLACKBOX is a program + its runtime + its dependencies + its interface +
 its permissions, packaged into one reproducible, portable `.blackbox` file.
