@@ -44,6 +44,19 @@ jobs:
         if: failure()
         run: blackbox doctor
 
+  rust-test:
+    name: Rust tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust integration suite (offline; heavy downloads are ignored)
+        run: cargo test --locked
+
   exe-build-check:
     name: Standalone binary builds + smoke (${{ matrix.os }})
     if: github.event_name != 'pull_request'

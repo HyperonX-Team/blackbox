@@ -37,7 +37,6 @@ SOURCE PROJECT          datasift.blackbox           ANOTHER MACHINE
 `blackbox-linux-x86_64`, `blackbox-macos-aarch64`, or
 `blackbox-windows-x86_64.exe` from [GitHub Releases](https://github.com/blackbox-project/blackbox/releases),
 then:
-
 ```bash
 chmod +x blackbox-linux-x86_64
 sudo install -m755 blackbox-linux-x86_64 /usr/local/bin/blackbox   # on PATH, done
@@ -46,6 +45,11 @@ blackbox doctor
 
 (The macOS binary is unsigned in v0.1: first run may need
 `xattr -d com.apple.quarantine blackbox-macos-aarch64`.)
+
+Releases are cut automatically by GitHub Actions: every push to `main`
+publishes a `v<crate>-build.<n>` release with all four binaries +
+`SHA256SUMS.txt` + per-platform example appliances; pushing a tag like
+`v0.2.0` (must match `Cargo.toml`) publishes the versioned release.
 
 **Python route** — Python 3.9+ on the machine *running* BLACKBOX (the CLI itself). Package
 recipients never need any language runtime on the host — BLACKBOX brings its
