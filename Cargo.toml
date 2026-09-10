@@ -1,0 +1,48 @@
+[package]
+name = "blackbox-runtime"
+version = "0.2.0"
+edition = "2021"
+description = "BLACKBOX - Download a machine. Portable, reproducible computational appliances."
+license = "Apache-2.0"
+authors = ["The BLACKBOX Project"]
+
+[[bin]]
+name = "blackbox"
+path = "src/main.rs"
+
+[lib]
+name = "blackbox_runtime"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "wrap_help"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+rand = "0.8"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+aes-gcm = "0.10"
+tar = "0.4"
+zip = { version = "0.6", default-features = false, features = ["deflate", "time"] }
+zstd = "0.13"
+rayon = "1"
+thiserror = "1"
+anyhow = "1"
+walkdir = "2"
+ureq = { version = "2", features = ["json"] }
+flate2 = "1"
+xz2 = "0.1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true

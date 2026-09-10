@@ -51,8 +51,20 @@ blackbox doctor
 recipients never need any language runtime on the host — BLACKBOX brings its
 own, verified interpreters into `~/.blackbox`.
 
+**Rust route (this rewrite)** — `blackbox` is now a **single native binary**;
+nothing to install on the machine *running* the CLI either (no Python, no
+nothing):
+
 ```bash
-pip install blackbox-runtime      # (from PyPI, once published)
+cargo build --release
+# -> target/release/blackbox  (also: target/x86_64-pc-windows-gnu/release/blackbox.exe)
+./target/release/blackbox doctor
+```
+
+Then:
+
+```bash
+pip install blackbox-runtime      # Python route only, if you prefer
 # or from a checkout:
 pip install .
 blackbox doctor                   # sanity-check platform, cache, sandbox
@@ -182,15 +194,47 @@ science" layer for individuals. (Roadmap in [docs/roadmap.md](docs/roadmap.md).)
 ## Layout
 
 ```
-blackbox/            the runtime & CLI (Python)
-  cli/ packaging/ manifest/ dependency/
-  runtime/ (providers: python, node, native)
-  sandbox/ (policy + platform jails + shim)
-  storage/ (content-addressed store)  crypto/ (Ed25519 signing)
-examples/            hello · datasift · research-repro
-tests/               unit + integration (incl. tamper & permission-denial)
+src/                 the runtime & CLI (Rust, single static binary)
+  commands/          clap surface + all blackbox subcommands
+  packaging/         deterministic zip/tar format · builder · reader
+  manifest/          blackbox.yaml parsing + strict validation
+  dependency/        lock resolution (pip/npm), hash-verified fetch
+  runtime/           providers: python · node · native · wasm · rust
+  sandbox/           policy + bwrap/sandbox-exec jails + shim install
+  storage/           content-addressed store (CAS) + mirror fetchers
+  crypto/            Ed25519 signing · X25519 + AES-256-GCM sealing
+examples/            hello · datasift · research-repro (legacy Python templates still embedded)
+tests/               Rust integration tests (determinism, tamper, sign, e2e run)
+blackbox/            the previous Python reference implementation
 docs/                architecture · format · security · roadmap
 ```
+
+## New in the Rust rewrite (v0.2)
+
+The port keeps byte-compatible formats and adds a stack of capabilities:
+
+* **WASM runtime** — `runtime: {type: wasm, version: "24.0.0"}` wraps a
+  wasmtime binary (pinned via GitHub release digests) around a `.wasm`
+  entrypoint. WASM is its own sandbox.
+* **Rust runtime** — `runtime: {type: rust, version: "1.85"}` compiles
+  `src/main.rs` at pack time with a pinned, hash-verified rust toolchain
+  (cross-compiles to any target by pulling `rust-std`).
+* **Multi-target fat packages** — `runtime.targets: [...]` builds one package
+  with per-target dependency layers; the right layer is picked at run time.
+* **Thin packages + LAN mirrors** — `pack --thin` emits manifest+index only;
+  `blackbox serve` exposes CAS objects by digest; `fetch --mirror …` /
+  `blackbox publish` materialize or push layer objects (zero cloud).
+* **Whole-package encryption** — `blackbox encrypt pkg --key`/`--to` seals
+  layer members (X25519 + AES-256-GCM); `blackbox run`
+  decrypts transparently with the matching `*.seal.key.pem`.
+* **Composite pipelines** — `blackbox compose --manifest` builds a
+  pipeline package out of staged `.blackbox` projects; `run` wires each
+  stage's `output/` into the next stage's `input/`.
+* **SBOM export** — `blackbox sbom pkg --format spdx|cyclonedx` from the lockfile.
+* **Signed binary self-update** — `blackbox self-update <url>` verifies a
+  publisher signature over the new binary and swaps it atomically.
+* **Zero-install CLI** — the tool itself is a single static binary;
+  runtime providers keep the "recipient installs nothing" contract.
 
 ## License & contributing
 

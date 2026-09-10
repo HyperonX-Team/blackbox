@@ -14,3 +14,6 @@ mkdocs.yml.bak
 # examples/research-repro/research-repro.blackbox, examples/wordcount-node/wordcount.blackbox
 # but stray packages built elsewhere:
 /blackbox-*.blackbox
+
+/target
+/target-*
