@@ -77,8 +77,9 @@ jobs:
           rm -rf /tmp/bb-smoke && mkdir -p /tmp/bb-smoke && cd /tmp/bb-smoke
           "$BB" init smokehello --template hello
           "$BB" pack smokehello
-          "$BB" verify smokehello.blackbox
-          "$BB" inspect smokehello.blackbox
+          # pack <path> writes the artifact beside the source tree
+          "$BB" verify smokehello/smokehello.blackbox
+          "$BB" inspect smokehello/smokehello.blackbox
           echo "smoke OK"
 
       - name: Report failure logs (self-debugging)
