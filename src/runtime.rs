@@ -114,7 +114,12 @@ fn extract_archive_bytes(
     }
     std::fs::rename(&staged, dest)
         .map_err(|e| BlackboxError::new("Could not finalize runtime dir").with_detail(e.to_string()))?;
-    Ok(found_exe)
+    // the staging dir was just renamed into place: remap any found path
+    Ok(found_exe.map(|p| {
+        p.strip_prefix(&staged)
+            .map(|rel| dest.join(rel))
+            .unwrap_or(p)
+    }))
 }
 
 #[derive(Clone, Copy, PartialEq)]
