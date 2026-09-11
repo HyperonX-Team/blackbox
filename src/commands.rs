@@ -222,10 +222,6 @@ fn watch_snapshot(root: &Path) -> BTreeMap<String, (u64, u64)> {
     seen
 }
 
-fn data_dir_for(name: &str) -> PathBuf {
-    ensure_home().packages.join(name).join("data")
-}
-
 #[derive(Clone, PartialEq)]
 enum SigState {
     Unsigned,
@@ -1152,7 +1148,7 @@ pub fn cmd_shell(package: &str, work: Option<String>, yes: bool, data: bool) -> 
     let home = ensure_home();
     let work_dir = work.map(PathBuf::from).unwrap_or_else(|| home.packages.join(format!("{}-work", pkg.manifest.name)));
     let data_dir = data.then(|| home.packages.join(pkg.manifest.name.clone()).join("data"));
-    let mut ctx = match crate::packaging::prepare_run(&pkg, &work_dir, data_dir.as_deref()) {
+    let ctx = match crate::packaging::prepare_run(&pkg, &work_dir, data_dir.as_deref()) {
         Ok(c) => c,
         Err(e) => return print_error(e),
     };
@@ -1172,7 +1168,7 @@ pub fn cmd_dev(path: &str, app_args: Vec<String>) -> i32 {
     let home = ensure_home();
     let app_dir = source.canonicalize().unwrap_or_else(|_| source.to_path_buf());
     let work_dir = home.packages.join(format!("{}-work", manifest.name));
-    let mut ctx = runtime::RunContext::new(
+    let ctx = runtime::RunContext::new(
         &manifest,
         &app_dir,
         &PathBuf::new(),
@@ -1214,7 +1210,7 @@ pub fn cmd_service_install(package: &str, name: &str, args: &str) -> i32 {
     0
 }
 
-fn service_launcher(name: &str, package: &str, args: &str) -> String {
+fn service_launcher(_name: &str, package: &str, args: &str) -> String {
     if cfg!(windows) {
         format!("@echo off\r\nblackbox run {} --yes {}\r\n", package, args)
     } else {
@@ -1323,7 +1319,7 @@ pub fn cmd_bench(package: &str, runs: u32) -> i32 {
     for i in 0..runs {
         let work_dir = home.packages.join(format!("{}-bench-work", pkg.manifest.name));
         let start = std::time::Instant::now();
-        let mut ctx = match crate::packaging::prepare_run(&pkg, &work_dir, None) {
+        let ctx = match crate::packaging::prepare_run(&pkg, &work_dir, None) {
             Ok(c) => c,
             Err(e) => return print_error(e),
         };

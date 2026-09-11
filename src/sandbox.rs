@@ -125,22 +125,27 @@ pub mod jail {
 
     #[cfg(unix)]
     fn probe(key: &str, argv: &[&str]) -> bool {
-        static CACHE: std::sync::OnceLock<Vec<(String, bool)>> = std::sync::OnceLock::new();
-        let cache = CACHE.get_or_init(|| Vec::new());
-        if let Some((_, ok)) = cache.iter().find(|(k, _)| k == key) {
-            return *ok;
+        static CACHE: std::sync::OnceLock<std::sync::Mutex<Vec<(String, bool)>>> =
+            std::sync::OnceLock::new();
+        let cache = CACHE.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+        if let Ok(guard) = cache.lock() {
+            if let Some((_, ok)) = guard.iter().find(|(k, _)| k == key) {
+                return *ok;
+            }
         }
         let ok = std::process::Command::new(argv[0])
             .args(&argv[1..])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false);
-        let mut c = CACHE.get_or_init(|| Vec::new());
-        c.push((key.to_string(), ok));
+        if let Ok(mut guard) = cache.lock() {
+            guard.push((key.to_string(), ok));
+        }
         ok
     }
 
     #[cfg(not(unix))]
+    #[allow(dead_code)]
     fn probe(_key: &str, _argv: &[&str]) -> bool {
         false
     }
@@ -172,9 +177,7 @@ pub mod jail {
         "shim-only"
     }
 
-    fn is_linux() -> bool {
-        cfg!(target_os = "linux")
-    }
+    #[cfg(unix)]
     fn is_macos() -> bool {
         cfg!(target_os = "macos")
     }
@@ -331,12 +334,12 @@ pub mod limits {
                 if let Some(mb) = mem {
                     let lim = (mb as u64) * 1024 * 1024;
                     let rlim = libc::rlimit { rlim_cur: lim, rlim_max: lim };
-                    libc::setrlimit(libc::RLIMIT_AS, &rlim);
+                    let _ = libc::setrlimit(libc::RLIMIT_AS, &rlim as *const _);
                 }
                 if let Some(pc) = procs {
                     let lim = pc as u64;
                     let rlim = libc::rlimit { rlim_cur: lim, rlim_max: lim };
-                    libc::setrlimit(libc::RLIMIT_NPROC, &rlim);
+                    let _ = libc::setrlimit(libc::RLIMIT_NPROC, &rlim as *const _);
                 }
                 Ok(())
             });

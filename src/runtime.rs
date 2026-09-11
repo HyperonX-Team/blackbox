@@ -682,7 +682,7 @@ impl RuntimeProvider for WasmProvider {
         args: &[String],
         exe: Option<&Path>,
         app_dir: &Path,
-        manifest: &Manifest,
+        _manifest: &Manifest,
     ) -> Result<Vec<String>, BlackboxError> {
         if command != "wasm" {
             return Err(BlackboxError::new(format!("WASM packages must use entrypoint command 'wasm' (got '{}').", command)));
@@ -870,7 +870,7 @@ pub fn rust_build_binary(
         .as_ref()
         .map(|d| d.join("bin").join(if cfg!(windows) { "rustc.exe" } else { "rustc" }));
     let mut env: BTreeMap<String, String> = BTreeMap::new();
-    if let Some(tc) = &tc_dir {
+    if tc_dir.is_some() {
         if let Some(rc) = &rustc_path {
             if rc.is_file() {
                 env.insert("RUSTC".into(), rc.display().to_string());
@@ -1088,7 +1088,7 @@ impl RuntimeProvider for RustProvider {
     fn rtype(&self) -> &'static str {
         "rust"
     }
-    fn ensure(&self, version: &str, target: &str, _pin: Option<&Value>) -> Result<Option<PathBuf>, BlackboxError> {
+    fn ensure(&self, _version: &str, target: &str, _pin: Option<&Value>) -> Result<Option<PathBuf>, BlackboxError> {
         // at run time the package binary IS the runtime (like native);
         // the cargo toolchain is a pack-time concern.
         check_target(target)?;

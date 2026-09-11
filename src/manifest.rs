@@ -265,7 +265,7 @@ pub fn load_manifest(text: &str) -> Result<Manifest, ManifestError> {
         ("rust", ""),
         ("composite", "1"),
     ];
-    if !SUPPORTED.iter().any(|(t, v)| *t == rt_type) {
+    if !SUPPORTED.iter().any(|(t, _)| *t == rt_type) {
         return Err(ManifestError::new(format!(
             "Runtime type '{}' is not supported. Supported: python, node, native, wasm, rust.",
             rt_type

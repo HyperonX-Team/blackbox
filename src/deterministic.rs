@@ -58,21 +58,6 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
     Ok(hex::encode(h.finalize()))
 }
 
-fn escape_ascii(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        let cp = c as u32;
-        if cp < 0x20 || c == '"' || c == '\\' {
-            out.push(c);
-        } else if cp < 0x80 {
-            out.push(c);
-        } else {
-            out.push_str(&format!("\\u{:04x}", cp));
-        }
-    }
-    out
-}
-
 /// Canonical JSON: sorted keys, tight separators, UTF-8, ASCII-escaped
 /// (serde_json already emits compact + sorted keys via BTreeMap Maps; this
 /// wrapper emulates Python's `ensure_ascii=True` for byte-parity).
@@ -160,8 +145,8 @@ pub fn tar_from_files(files: &BTreeMap<String, Option<Vec<u8>>>, exec_paths: &[&
             h.set_uid(0);
             h.set_gid(0);
             h.set_mtime(FIXED_MTIME);
-            h.set_username("");
-            h.set_groupname("");
+            let _ = h.set_username("");
+            let _ = h.set_groupname("");
             let payload: Cursor<Vec<u8>> = if is_dir {
                 Cursor::new(Vec::new())
             } else {
@@ -338,7 +323,7 @@ pub fn extract_tree(
         .map_err(|e| PackageFormatError::new("Could not resolve staged dir").with_detail(e.to_string()))?;
     for (name, data) in files {
         let rel = name.trim_end_matches('/');
-        let mut target = staged.join(rel);
+        let target = staged.join(rel);
         for comp in rel.split('/') {
             if comp == ".." || comp.is_empty() {
                 return Err(PackageFormatError::new(format!("Refusing unsafe path in package: {}", name)));
