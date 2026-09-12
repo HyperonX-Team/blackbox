@@ -1,7 +1,11 @@
 ; Inno Setup script for the Blackbox Windows installer.
 ;
 ; Build with:
-;   iscc /DAppVersion=0.2.0 /DStageDir=dist packaging\windows\blackbox.iss
+;   iscc /DAppVersion=0.2.0 /DStageDir=C:\path\to\dist /DOutDir=C:\path\to\out ^
+;        packaging\windows\blackbox.iss
+;
+; StageDir and OutDir must be absolute paths: Inno resolves relative Source
+; paths against the directory containing this script, not the shell's cwd.
 ;
 ; The installer is per-user (no admin prompt), puts both programs in
 ; %LOCALAPPDATA%\Programs\Blackbox and adds that directory to the user PATH.
@@ -10,7 +14,10 @@
   #define AppVersion "0.0.0"
 #endif
 #ifndef StageDir
-  #define StageDir "dist"
+  #define StageDir "."
+#endif
+#ifndef OutDir
+  #define OutDir "."
 #endif
 
 [Setup]
@@ -25,13 +32,12 @@ DefaultDirName={localappdata}\Programs\Blackbox
 DefaultGroupName=Blackbox
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-OutputDir=.
+SourceDir={#StageDir}
+OutputDir={#OutDir}
 OutputBaseFilename=blackbox-setup-windows-x86_64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
 ChangesEnvironment=yes
 UninstallDisplayName=Blackbox
 
@@ -42,22 +48,20 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Files]
-Source: "{#StageDir}\blackbox.exe";     DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StageDir}\blackbox-gui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "blackbox.exe";     DestDir: "{app}"; Flags: ignoreversion
+Source: "blackbox-gui.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Blackbox";           Filename: "{app}\blackbox-gui.exe"
 Name: "{group}\Uninstall Blackbox"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Blackbox";     Filename: "{app}\blackbox-gui.exe"; Tasks: desktopicon
 
-; Put the install directory on the user PATH (only once).
+; Put the install directory on the user PATH, once.
 [Registry]
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; \
-  ValueData: "{olddata};{app}"; Check: NeedsAddPath(ExpandConstant('{app}'))
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Run]
-Filename: "{app}\blackbox.exe"; Parameters: "doctor"; \
-  Description: "Check the installation"; Flags: postinstall skipifsilent nowait
+Filename: "{app}\blackbox.exe"; Parameters: "doctor"; Description: "Check the installation"; Flags: postinstall skipifsilent nowait
 
 [Code]
 function NeedsAddPath(Param: string): boolean;

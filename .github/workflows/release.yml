@@ -353,18 +353,31 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          New-Item -ItemType Directory -Force -Path out | Out-Null
-          Copy-Item "dist/${{ matrix.cli }}" "dist/blackbox.exe" -Force
-          Copy-Item "dist/gui/${{ matrix.gui }}" "dist/blackbox-gui.exe" -Force
+          $root = $env:GITHUB_WORKSPACE
+          $dist = Join-Path $root 'dist'
+          $gui  = Join-Path $dist 'gui'
+          $out  = Join-Path $root 'out'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          Copy-Item (Join-Path $dist '${{ matrix.cli }}') (Join-Path $dist 'blackbox.exe') -Force
+          Copy-Item (Join-Path $gui  '${{ matrix.gui }}') (Join-Path $dist 'blackbox-gui.exe') -Force
+
           $candidates = @(
             'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
             'C:\Program Files\Inno Setup 6\ISCC.exe'
           )
           $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $iscc) { throw 'ISCC.exe not found after installing Inno Setup' }
-          & $iscc "/DAppVersion=${{ steps.v.outputs.v }}" '/DStageDir=dist' 'packaging\windows\blackbox.iss'
-          Move-Item 'blackbox-setup-windows-x86_64.exe' 'out/' -Force
-          Get-ChildItem out
+
+          # StageDir and OutDir have to be absolute: Inno resolves relative
+          # Source paths against the script directory, not the shell's cwd.
+          & $iscc "/DAppVersion=${{ steps.v.outputs.v }}" "/DStageDir=$dist" "/DOutDir=$out" (Join-Path $root 'packaging\windows\blackbox.iss')
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+          Get-ChildItem $out
+          if (-not (Test-Path (Join-Path $out 'blackbox-setup-windows-x86_64.exe'))) {
+            throw 'the installer was not produced'
+          }
 
       - uses: actions/upload-artifact@v4
         with:
