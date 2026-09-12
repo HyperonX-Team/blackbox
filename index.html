@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackbox — send a program that installs nothing</title>
+<meta name="description" content="Blackbox packs an application, its runtime, its dependencies and the permissions it needs into one file. The person receiving it runs that file.">
+<meta name="theme-color" content="#eef0ee">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23eef0ee'/%3E%3Crect x='5' y='5' width='22' height='22' fill='%23101418'/%3E%3Crect x='5' y='5' width='22' height='6' fill='%23f2c200'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<header>
+  <div class="page head">
+    <a class="wordmark" href="#top"><span class="mark" aria-hidden="true"></span><b>BLACKBOX</b></a>
+    <nav>
+      <a href="#inside">What's inside</a>
+      <a href="download.html" data-transition>Download</a>
+      <a class="secondary" href="#commands">Commands</a>
+      <a class="secondary" href="#trust">Signing</a>
+      <a href="https://github.com/HyperonX-Team/blackbox">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="page hero">
+    <h1>Send a program that installs nothing.</h1>
+    <p class="say">
+      Blackbox puts an application, its runtime, its dependencies and the
+      permissions it needs into a single file. The person receiving it runs
+      that file. Python, Node and everything else arrive inside it.
+    </p>
+    <div class="acts">
+      <a class="button" href="download.html" data-transition>Get Blackbox</a>
+      <a class="button ghost" href="#inside">See what's in the file</a>
+    </div>
+
+    <figure class="figure" id="figure" aria-label="An exploded view of a blackbox file and its contents">
+      <svg viewBox="0 0 980 520" role="img">
+        <title>A blackbox file with its parts laid out around it</title>
+        <g stroke="#101418" stroke-width="1.2" stroke-dasharray="5 5" fill="none">
+          <path d="M245 122 L378 262"/>
+          <path d="M245 268 L378 268"/>
+          <path d="M245 414 L378 274"/>
+          <path d="M735 122 L602 262"/>
+          <path d="M735 268 L602 268"/>
+          <path d="M735 414 L602 274"/>
+        </g>
+
+        <g class="part p1" style="--dx:-16px">
+          <rect x="60" y="94" width="185" height="56" fill="#f2c200"/>
+          <text x="78" y="128" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">runtime</text>
+        </g>
+        <g class="part p2" style="--dx:-16px">
+          <rect x="60" y="240" width="185" height="56" fill="#ffffff" stroke="#101418" stroke-width="1.5"/>
+          <text x="78" y="274" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">dependencies</text>
+        </g>
+        <g class="part p3" style="--dx:-16px">
+          <rect x="60" y="386" width="185" height="56" fill="#ffffff" stroke="#101418" stroke-width="1.5"/>
+          <text x="78" y="420" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">secrets</text>
+        </g>
+
+        <g class="part p4" style="--dx:16px">
+          <rect x="735" y="94" width="185" height="56" fill="#ffffff" stroke="#101418" stroke-width="1.5"/>
+          <text x="753" y="128" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">permissions</text>
+        </g>
+        <g class="part p5" style="--dx:16px">
+          <rect x="735" y="240" width="185" height="56" fill="#f2c200"/>
+          <text x="753" y="274" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">interface</text>
+        </g>
+        <g class="part p6" style="--dx:16px">
+          <rect x="735" y="386" width="185" height="56" fill="#ffffff" stroke="#101418" stroke-width="1.5"/>
+          <text x="753" y="420" font-family="Bricolage Grotesque,sans-serif" font-size="17" font-weight="600" fill="#101418">signature</text>
+        </g>
+
+        <rect x="380" y="170" width="200" height="200" fill="#101418"/>
+        <rect x="380" y="170" width="200" height="26" fill="#f2c200"/>
+        <text x="480" y="398" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-size="19" font-weight="700" fill="#101418">app.blackbox</text>
+      </svg>
+    </figure>
+  </div>
+
+  <section id="inside" class="band">
+    <div class="page">
+      <div class="lede">
+        <h2>One file, and everything it needs to run.</h2>
+        <p>
+          A blackbox is not a script that expects a machine to already be set
+          up. It carries the machine. Nothing on the receiving computer is
+          consulted, installed or upgraded.
+        </p>
+      </div>
+
+      <div class="parts">
+        <div class="part-row">
+          <span class="swatch"></span>
+          <div>
+            <h3>Runtime</h3>
+            <p>Python, Node.js, WebAssembly, Rust or your own compiled binary. Fetched from a hash-pinned upstream build, or built while packing.</p>
+          </div>
+        </div>
+        <div class="part-row">
+          <span class="swatch white"></span>
+          <div>
+            <h3>Dependencies</h3>
+            <p>pip and npm resolved for the machine you are targeting, then recorded by version and checksum in the lockfile.</p>
+          </div>
+        </div>
+        <div class="part-row">
+          <span class="swatch white"></span>
+          <div>
+            <h3>Permissions</h3>
+            <p>Files, network and processes are denied unless the manifest asks for them. You are shown the list before the first run.</p>
+          </div>
+        </div>
+        <div class="part-row">
+          <span class="swatch"></span>
+          <div>
+            <h3>Interface</h3>
+            <p>A command, a local web page or a window, plus any named subcommands the package exposes.</p>
+          </div>
+        </div>
+        <div class="part-row">
+          <span class="swatch white"></span>
+          <div>
+            <h3>Secrets</h3>
+            <p>Keys and tokens can be sealed to one recipient and opened only while the app runs.</p>
+          </div>
+        </div>
+        <div class="part-row">
+          <span class="swatch ink"></span>
+          <div>
+            <h3>Signature</h3>
+            <p>A publisher signs the contents. If a single byte changes afterwards, the package stops running.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="page">
+      <div class="lede">
+        <h2>Making one takes three commands.</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="n">1</span>
+          <div>
+            <h3>Describe the application</h3>
+            <p>One small <code>blackbox.yaml</code> names the runtime, the entrypoint and what the app is allowed to touch.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="n">2</span>
+          <div>
+            <h3>Run <code>blackbox pack</code></h3>
+            <p>Blackbox resolves the dependencies, verifies them, and writes a package whose bytes depend only on the source and the lockfile. Pack twice and you get the same file.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="n">3</span>
+          <div>
+            <h3>Hand over the file</h3>
+            <p>Mail it, put it on a stick, upload it to a paper's supplementary material. It runs the same way on a laptop, a server or a machine with no network at all.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" class="shell">
+    <div class="page">
+      <div class="lede">
+        <h2>Install it on the machine you pack from.</h2>
+        <p>
+          The people you send packages to do not install Blackbox unless they
+          want to run one from a terminal or look inside it. The desktop app
+          and the command line tool are both on the download page.
+        </p>
+      </div>
+      <div class="acts">
+        <a class="button big" href="download.html" data-transition>Open the download page</a>
+        <a class="button ghost" href="https://github.com/HyperonX-Team/blackbox/releases">Browse releases on GitHub</a>
+      </div>
+<pre style="margin-top:34px"><span class="c"># if you would rather just have the command, on Debian or Ubuntu:</span>
+<span class="p">$</span> sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
+<span class="p">$</span> blackbox doctor</pre>
+    </div>
+  </section>
+
+  <section id="commands">
+    <div class="page">
+      <div class="lede">
+        <h2>You can look inside before you run it.</h2>
+        <p>A package is an ordinary archive. These commands read it, check it and take it apart.</p>
+      </div>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Command</th><th>What it tells you</th></tr></thead>
+        <tbody>
+          <tr><td><code>inspect</code></td><td>The manifest, the layers, the permissions and who signed it.</td></tr>
+          <tr><td><code>verify</code></td><td>Whether every checksum and signature still matches.</td></tr>
+          <tr><td><code>audit</code></td><td>What the package would be able to reach, found by reading it rather than running it.</td></tr>
+          <tr><td><code>explain</code></td><td>The permission list in ordinary words.</td></tr>
+          <tr><td><code>unpack</code></td><td>Every layer on disk so you can read the code yourself.</td></tr>
+          <tr><td><code>diff</code></td><td>Which members changed between two builds.</td></tr>
+          <tr><td><code>sbom</code></td><td>A CycloneDX or SPDX inventory taken from the lockfile.</td></tr>
+          <tr><td><code>cache</code></td><td>How much is stored locally, and whether any of it has rotted.</td></tr>
+          <tr><td><code>doctor</code></td><td>What this machine can enforce: the platform jail, the runtime shims, the limits.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="trust" class="band">
+    <div class="page">
+      <div class="lede">
+        <h2>Signed by a publisher, or sealed to one person.</h2>
+      </div>
+      <div class="split">
+        <div>
+          <h3>Signing</h3>
+          <p>Keys are Ed25519. You pin a publisher once, by fingerprint, and after that their packages are trusted by name.</p>
+<pre><span class="p">$</span> blackbox keygen lab --publisher "Research Lab X"
+<span class="p">$</span> blackbox sign   report.blackbox --key lab
+<span class="p">$</span> blackbox trust  lab.pub.pem --publisher "Research Lab X"
+<span class="p">$</span> blackbox verify report.blackbox</pre>
+        </div>
+        <div>
+          <h3>Sealing</h3>
+          <p>Secrets travel inside the package, encrypted with X25519 and AES-256-GCM, and are opened only with the recipient's private key at run time.</p>
+<pre><span class="p">$</span> blackbox seal    report.blackbox --secrets .env --to lab.seal.pub.pem
+<span class="p">$</span> blackbox encrypt report.blackbox --to lab.seal.pub.pem</pre>
+        </div>
+      </div>
+      <p class="note">
+        An unsigned package stops and shows its full permission list before it
+        runs. A signed package whose contents changed will not start at all.
+      </p>
+    </div>
+  </section>
+
+  <section id="examples">
+    <div class="page">
+      <div class="lede">
+        <h2>Three examples you can pack in a minute.</h2>
+      </div>
+      <div class="examples">
+        <div class="example">
+          <div>
+            <h3>datasift</h3>
+            <p>A CSV cleaning tool with a local web page. Uses nothing outside the Python standard library, which is the point: the recipient installs nothing, not even for the package itself.</p>
+          </div>
+<pre><span class="p">$</span> cp -r examples/datasift myapp
+<span class="p">$</span> cd myapp &amp;&amp; blackbox pack
+<span class="p">$</span> blackbox run datasift.blackbox
+<span class="c"># datasift is live at http://127.0.0.1:8765</span></pre>
+        </div>
+        <div class="example">
+          <div>
+            <h3>research-repro</h3>
+            <p>A report rendered by pinned versions of Jinja2 and MarkupSafe on an interpreter downloaded and verified on the reviewer's own machine. Send it with the paper.</p>
+          </div>
+<pre><span class="p">$</span> cp -r examples/research-repro repro
+<span class="p">$</span> cd repro &amp;&amp; blackbox pack
+<span class="p">$</span> blackbox run research-repro.blackbox
+<span class="c"># output/report.html, output/metrics.json</span></pre>
+        </div>
+        <div class="example">
+          <div>
+            <h3>wordcount-node</h3>
+            <p>Node.js 22 with npm dependencies. The official distribution from nodejs.org, pinned by version and checksum at pack time.</p>
+          </div>
+<pre><span class="p">$</span> blackbox init wordy --template node
+<span class="p">$</span> cd wordy &amp;&amp; blackbox pack
+<span class="p">$</span> blackbox run wordy.blackbox</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="page">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span><b>BLACKBOX</b></span>
+    <a href="download.html" data-transition>Download</a>
+    <a href="https://github.com/HyperonX-Team/blackbox">Source</a>
+    <a href="https://github.com/HyperonX-Team/blackbox/releases">Releases</a>
+    <a href="https://github.com/HyperonX-Team/blackbox/issues">Issues</a>
+    <span class="end">Version 0.2.0, Apache-2.0, no registry and no account</span>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>

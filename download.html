@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Blackbox</title>
+<meta name="description" content="Download the Blackbox command line tool and desktop app for Linux, macOS and Windows.">
+<meta name="theme-color" content="#eef0ee">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23eef0ee'/%3E%3Crect x='5' y='5' width='22' height='22' fill='%23101418'/%3E%3Crect x='5' y='5' width='22' height='6' fill='%23f2c200'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<header>
+  <div class="page head">
+    <a class="wordmark" href="index.html" data-transition><span class="mark" aria-hidden="true"></span><b>BLACKBOX</b></a>
+    <nav>
+      <a href="index.html" data-transition>Overview</a>
+      <a href="index.html#commands" data-transition>Commands</a>
+      <a href="index.html#trust" data-transition>Signing</a>
+      <a href="https://github.com/HyperonX-Team/blackbox">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="page dl-head">
+    <h1>Take the whole machine with you.</h1>
+    <p class="say">
+      Every release carries the command line tool and the desktop app for
+      Linux, macOS and Windows. Pick the format you use; the packages are
+      small and nothing else has to be installed first.
+    </p>
+
+    <div class="release-strip" id="release-strip">
+      <span class="spinner" id="release-status">Looking up the latest release…</span>
+    </div>
+
+    <div class="split" style="margin-top:44px">
+      <div>
+        <h3>Linux and macOS, one line</h3>
+        <p>The script works out which machine it is on, downloads the matching archive, checks it against the published hashes and puts both programs on your PATH.</p>
+<pre><span class="p">$</span> curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh</pre>
+      </div>
+      <div>
+        <h3>Windows, one line</h3>
+        <p>The same idea in PowerShell: it installs per user, adds the directory to your PATH and leaves the environment untouched otherwise.</p>
+<pre><span class="p">&gt;</span> irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex</pre>
+      </div>
+    </div>
+
+    <div class="groups" id="groups" hidden></div>
+
+    <noscript>
+      <p class="dl-note">
+        The list above is built from the GitHub release for this project.
+        JavaScript is off, so open the release page instead:
+        <a href="https://github.com/HyperonX-Team/blackbox/releases/latest">github.com/HyperonX-Team/blackbox/releases</a>.
+      </p>
+    </noscript>
+
+    <p class="dl-note" id="verify-note" hidden>
+      Check a download against the published checksums before you run it:
+      <code>sha256sum -c SHA256SUMS.txt</code>, or on macOS
+      <code>shasum -a 256 -c SHA256SUMS.txt</code>.
+    </p>
+  </div>
+</main>
+
+<footer>
+  <div class="page">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span><b>BLACKBOX</b></span>
+    <a href="index.html" data-transition>Overview</a>
+    <a href="https://github.com/HyperonX-Team/blackbox">Source</a>
+    <a href="https://github.com/HyperonX-Team/blackbox/releases">Releases</a>
+    <a href="https://github.com/HyperonX-Team/blackbox/issues">Issues</a>
+    <span class="end">Version 0.2.0, Apache-2.0, no registry and no account</span>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+<script>
+(function () {
+  var API = "https://api.github.com/repos/HyperonX-Team/blackbox/releases/latest";
+  var RELEASES = "https://github.com/HyperonX-Team/blackbox/releases";
+
+  var status = document.getElementById("release-status");
+  var strip = document.getElementById("release-strip");
+  var groupsEl = document.getElementById("groups");
+  var verifyNote = document.getElementById("verify-note");
+
+  function human(bytes) {
+    if (!bytes && bytes !== 0) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function groupOf(name) {
+    if (/\.(deb|rpm|pkg)$/i.test(name)) return "Installers";
+    if (/setup.*\.exe$/i.test(name)) return "Installers";
+    if (/^install\.(sh|ps1)$/i.test(name)) return "Install scripts";
+    if (/SHA256SUMS/i.test(name)) return "Checksums";
+    if (/macos/i.test(name)) return "macOS";
+    if (/windows/i.test(name)) return "Windows";
+    if (/linux/i.test(name)) return "Linux";
+    return "Also in this release";
+  }
+  var order = ["Installers", "Install scripts", "Linux", "macOS", "Windows", "Checksums", "Also in this release"];
+  var hint = {
+    "Installers": "These put blackbox and blackbox-gui on your PATH for you. Debian and Ubuntu use the .deb, Fedora and RHEL use the .rpm, macOS uses the .pkg, Windows uses the setup .exe.",
+    "Install scripts": "One line each. They detect the machine, download the right archive, check it against SHA256SUMS.txt and install it.",
+    "Linux": "Unpack anywhere. The tarball holds both blackbox and blackbox-gui.",
+    "macOS": "Unpack anywhere. Apple Silicon. First run may need the quarantine attribute cleared.",
+    "Windows": "Unzip and run blackbox.exe for the command line, blackbox-gui.exe for the app.",
+    "Checksums": "The published hashes for every file in this release.",
+    "Also in this release": "Library wheels and example appliances."
+  };
+
+  function fallback(reason) {
+    status.textContent = reason;
+    var a = document.createElement("a");
+    a.href = RELEASES + "/latest";
+    a.textContent = "Open the release page";
+    strip.appendChild(a);
+    strip.appendChild(document.createTextNode(" "));
+    // a few stable links: these asset names do not carry a version
+    var stable = [
+      ["blackbox-linux-amd64.tar.gz", "Linux"],
+      ["blackbox-macos-aarch64.tar.gz", "macOS"],
+      ["blackbox-windows-x86_64.zip", "Windows"],
+      ["SHA256SUMS.txt", "Checksums"]
+    ];
+    var grid = document.createElement("div");
+    grid.className = "dl";
+    stable.forEach(function (pair) {
+      grid.appendChild(item({ name: pair[0], size: 0, browser_download_url: RELEASES + "/latest/download/" + pair[0] }));
+    });
+    groupsEl.appendChild(grid);
+    groupsEl.hidden = false;
+  }
+
+  function item(asset) {
+    var row = document.createElement("div");
+    row.className = "dl-item";
+
+    var name = document.createElement("span");
+    name.className = "dl-name";
+    name.textContent = asset.name;
+
+    var size = document.createElement("span");
+    size.className = "dl-size";
+    size.textContent = human(asset.size);
+
+    var link = document.createElement("a");
+    link.className = "dl-get";
+    link.href = asset.browser_download_url;
+    link.textContent = "Download";
+    link.setAttribute("rel", "noopener");
+
+    row.appendChild(name);
+    row.appendChild(size);
+    row.appendChild(link);
+    return row;
+  }
+
+  fetch(API, { headers: { Accept: "application/vnd.github+json" } })
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then(function (release) {
+      strip.textContent = "";
+
+      var tag = document.createElement("strong");
+      tag.textContent = release.tag_name || "latest";
+
+      var date = document.createElement("span");
+      var when = release.published_at ? new Date(release.published_at) : null;
+      date.textContent = when && !isNaN(when)
+        ? "published " + when.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+        : "";
+
+      var page = document.createElement("a");
+      page.href = release.html_url;
+      page.textContent = "Release notes";
+
+      strip.appendChild(tag);
+      strip.appendChild(date);
+      strip.appendChild(page);
+
+      var buckets = {};
+      (release.assets || []).forEach(function (a) {
+        var g = groupOf(a.name);
+        (buckets[g] = buckets[g] || []).push(a);
+      });
+
+      order.forEach(function (g) {
+        if (!buckets[g] || !buckets[g].length) return;
+        var wrap = document.createElement("div");
+        wrap.className = "group";
+
+        var h = document.createElement("h2");
+        h.textContent = g;
+        wrap.appendChild(h);
+
+        if (hint[g]) {
+          var p = document.createElement("p");
+          p.className = "hint";
+          p.textContent = hint[g];
+          wrap.appendChild(p);
+        }
+
+        var dl = document.createElement("div");
+        dl.className = "dl";
+        buckets[g].sort(function (x, y) { return x.name.localeCompare(y.name); });
+        buckets[g].forEach(function (a) { dl.appendChild(item(a)); });
+        wrap.appendChild(dl);
+        groupsEl.appendChild(wrap);
+      });
+
+      groupsEl.hidden = false;
+      if (buckets["Checksums"]) verifyNote.hidden = false;
+    })
+    .catch(function (err) {
+      fallback("The release list could not be loaded (" + err.message + ").");
+    });
+})();
+</script>
+</body>
+</html>
