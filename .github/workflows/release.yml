@@ -268,8 +268,10 @@ jobs:
             *.zip
 
   # 2. Build per-platform example .blackbox appliances USING the released binary.
+  #    Best-effort: a flaky runtime download must never block the release.
   build-examples:
     needs: build-binaries
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -335,8 +337,10 @@ jobs:
           path: dist/*
 
   # 4. Aggregate everything into a GitHub Release.
+  #    Runs as long as the core binaries built, even if example packing failed.
   release:
     needs: [build-binaries, package-linux, package-other, build-examples, build-wheel]
+    if: ${{ !cancelled() && needs.build-binaries.result == 'success' }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
