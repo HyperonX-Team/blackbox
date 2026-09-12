@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACKBOX - Download a machine</title>
+    <meta name="description" content="BLACKBOX - Portable, reproducible computational appliances. Pack your app with its runtime, dependencies, and permissions into a single .blackbox file.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-elevated: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #00d4ff;
+            --accent-dim: #00d4ff33;
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+            --purple: #a371f7;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', system-ui, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html { scroll-behavior: smooth; }
+        
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-dim), transparent),
+                radial-gradient(circle at 20% 80%, #a371f71a, transparent),
+                linear-gradient(180deg, var(--bg), #0a0e14);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Grid pattern overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+        a:hover { color: #66e0ff; }
+
+        code {
+            font-family: var(--font-mono);
+            background: var(--bg-elevated);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+            border: 1px solid var(--border);
+        }
+
+        pre {
+            font-family: var(--font-mono);
+            background: #0a0e14;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            border: none;
+            font-size: 0.85rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header */
+        header {
+            padding: 4rem 0 3rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--bg);
+            box-shadow: 0 0 40px var(--accent-dim), 0 8px 32px rgba(0,0,0,0.3);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 40px var(--accent-dim), 0 8px 32px rgba(0,0,0,0.3); }
+            50% { box-shadow: 0 0 60px var(--accent-dim), 0 12px 40px rgba(0,0,0,0.4); }
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: var(--bg);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px var(--accent-dim);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .btn-github {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .btn-github:hover {
+            color: var(--text);
+            border-color: var(--text-muted);
+        }
+
+        /* Badges */
+        .badges {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
+        .badge.rust::before { background: #dea584; }
+        .badge.zero-install::before { background: var(--green); }
+        .badge.offline::before { background: var(--yellow); }
+        .badge.reproducible::before { background: var(--purple); }
+
+        /* Sections */
+        section { padding: 4rem 0; }
+        section.alt { background: rgba(22, 27, 34, 0.5); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+        h2 {
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .section-lead {
+            text-align: center;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            font-size: 1.1rem;
+        }
+
+        /* Features grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .feature-card p { color: var(--text-muted); font-size: 0.95rem; }
+
+        /* Quickstart */
+        .quickstart-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .step {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+        .step::before {
+            content: attr(data-step);
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .step code { display: block; margin: 1rem 0; padding: 0.75rem; background: #0a0e14; border-radius: 6px; text-align: left; font-size: 0.85rem; overflow-x: auto; }
+        .step p { color: var(--text-muted); font-size: 0.9rem; }
+
+        /* Tabs for install methods */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .tab:hover, .tab.active {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Examples */
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .example-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .example-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+        .example-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .example-header h3 { display: flex; align-items: center; gap: 0.5rem; }
+        .example-body { padding: 1.5rem; }
+        .example-body pre { margin: 0; font-size: 0.8rem; }
+
+        /* CLI reference */
+        .cli-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .cli-table th, .cli-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .cli-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .cli-table td code { white-space: nowrap; }
+        .cli-table tr:hover td { background: var(--accent-dim); }
+
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        footer a { margin: 0 0.5rem; }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container { padding: 0 1.25rem; }
+            header { padding: 3rem 0 2rem; }
+            section { padding: 3rem 0; }
+            .cta-group { flex-direction: column; align-items: center; }
+            .btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">BB</div>
+            <h1>BLACKBOX</h1>
+            <p class="tagline">Download a machine. Portable, reproducible computational appliances.</p>
+            <p class="tagline">Pack your app + runtime + deps + permissions into one <code>.blackbox</code> file. Recipients run it with zero host setup.</p>
+            <div class="cta-group">
+                <a href="#install" class="btn btn-primary">Get Started</a>
+                <a href="https://github.com/blackbox-project/blackbox" class="btn btn-github" target="_blank">GitHub</a>
+            </div>
+            <div class="badges">
+                <span class="badge rust">Rust rewrite (v0.2)</span>
+                <span class="badge zero-install">Zero-install CLI</span>
+                <span class="badge offline">Offline forever</span>
+                <span class="badge reproducible">Reproducible builds</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="install">
+            <h2>Install</h2>
+            <p class="section-lead">BLACKBOX is a single static binary. No Python, no Node, no runtime needed on the host.</p>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="prebuilt">Prebuilt binaries</button>
+                <button class="tab" data-tab="cargo">Cargo (Rust)</button>
+                <button class="tab" data-tab="pip">pip (Python)</button>
+            </div>
+
+            <div class="tab-panel active" id="tab-prebuilt">
+                <pre><code># Linux x86_64
+curl -L https://github.com/blackbox-project/blackbox/releases/latest/download/blackbox-linux-x86_64 -o blackbox
+chmod +x blackbox
+sudo install -m755 blackbox /usr/local/bin/blackbox
+
+# macOS ARM64
+curl -L https://github.com/blackbox-project/blackbox/releases/latest/download/blackbox-macos-aarch64 -o blackbox
+chmod +x blackbox
+# First run may need: xattr -d com.apple.quarantine blackbox
+sudo install -m755 blackbox /usr/local/bin/blackbox
+
+# Windows x86_64 (PowerShell)
+irm https://github.com/blackbox-project/blackbox/releases/latest/download/blackbox-windows-x86_64.exe -OutFile blackbox.exe
+# Move to a folder on PATH</code></pre>
+                <p style="margin-top: 1rem; color: var(--text-muted);">Then verify: <code>blackbox doctor</code></p>
+            </div>
+
+            <div class="tab-panel" id="tab-cargo">
+                <pre><code>cargo install blackbox-runtime
+# Or from source:
+git clone https://github.com/blackbox-project/blackbox
+cd blackbox
+cargo build --release
+# Binary at target/release/blackbox</code></pre>
+            </div>
+
+            <div class="tab-panel" id="tab-pip">
+                <pre><code>pip install blackbox-runtime
+# Requires Python 3.9+ on the host running the CLI
+# Package recipients never need Python</code></pre>
+            </div>
+        </section>
+
+        <section class="alt" id="quickstart">
+            <h2>Five-Minute Quickstart</h2>
+            <p class="section-lead">Create, pack, and run your first BLACKBOX package</p>
+
+            <div class="quickstart-steps">
+                <div class="step" data-step="1">
+                    <p>Initialize a project</p>
+                    <code>blackbox init hello</code>
+                    <code>cd hello</code>
+                </div>
+                <div class="step" data-step="2">
+                    <p>Pack into .blackbox</p>
+                    <code>blackbox pack</code>
+                </div>
+                <div class="step" data-step="3">
+                    <p>Run locally</p>
+                    <code>blackbox run hello.blackbox</code>
+                </div>
+                <div class="step" data-step="4">
+                    <p>Ship it</p>
+                    <code># Send hello.blackbox via</code>
+                    <code># USB, email, HTTP, etc.</code>
+                </div>
+                <div class="step" data-step="5">
+                    <p>Recipient runs it</p>
+                    <code>blackbox run hello.blackbox</code>
+                </div>
+            </div>
+        </section>
+
+        <section id="features">
+            <h2>Why BLACKBOX?</h2>
+            <p class="section-lead">Not a container. Not a package manager. A portable appliance format.</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, var(--accent-dim), var(--purple));">📦</div>
+                    <h3>Single File Distribution</h3>
+                    <p>One <code>.blackbox</code> contains everything: code, runtime, dependencies, permissions, interface. Copy it anywhere.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #3fb95033, #2ea04333);">🔒</div>
+                    <h3>Permission-First</h3>
+                    <p>Packages declare filesystem, network, and process access. Defaults deny everything. Recipient approves on first run.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #d2992233, #bb800933);">📦</div>
+                    <h3>Content-Addressed Storage</h3>
+                    <p>Layers deduplicated by SHA-256. Ten apps using Python 3.12 + NumPy share one copy on disk.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #a371f733, #8957e533);">🔄</div>
+                    <h3>Reproducible Builds</h3>
+                    <p>Identical source + lockfile → byte-identical package. Deterministic ZIP with fixed timestamps.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #f8514933, #da363333);">🌐</div>
+                    <h3>Offline Forever</h3>
+                    <p>No registry, no accounts, no tokens. The file is the product. Works air-gapped.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #8b949e33, #6e768133);">⚙️</div>
+                    <h3>Multi-Runtime</h3>
+                    <p>Python, Node.js, WASM, Rust, native binaries. Add new languages via provider plugins.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="alt" id="examples">
+            <h2>Built-in Examples</h2>
+            <p class="section-lead">Copy any example to start your project instantly</p>
+
+            <div class="examples-grid">
+                <div class="example-card">
+                    <div class="example-header"><h3>📊 datasift</h3></div>
+                    <div class="example-body">
+                        <p>CSV cleaning appliance with web UI. Zero third-party deps — stdlib only.</p>
+                        <pre><code>cp -r examples/datasift myapp
+cd myapp
+blackbox pack
+blackbox run datasift.blackbox
+# → http://127.0.0.1:8765</code></pre>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="example-header"><h3>🔬 research-repro</h3></div>
+                    <div class="example-body">
+                        <p>Sealed research environment. Pip dependencies pinned by hash (Jinja2, MarkupSafe).</p>
+                        <pre><code>cp -r examples/research-repro repro
+cd repro
+blackbox pack
+blackbox run research-repro.blackbox
+# → output/report.html, metrics.json</code></pre>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="example-header"><h3>🟢 Node.js</h3></div>
+                    <div class="example-body">
+                        <p>Node.js 22 with npm deps. Official nodejs.org distro pinned by version + SHA-256.</p>
+                        <pre><code>blackbox init wordy --template node
+cd wordy
+blackbox pack
+blackbox run wordy.blackbox</code></pre>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <div class="example-header"><h3>🦀 Native / Rust</h3></div>
+                    <div class="example-body">
+                        <p>Compiled binary IS the runtime. Cross-compiles to any target at pack time.</p>
+                        <pre><code># manifest:
+runtime:
+  type: native
+  version: "any"
+entrypoint:
+  command: ./bin/app</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="inspecting">
+            <h2>Inspecting Packages</h2>
+            <p class="section-lead">Every <code>.blackbox</code> is a documented, inspectable archive</p>
+
+            <table class="cli-table">
+                <thead>
+                    <tr><th>Command</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>blackbox inspect pkg.blackbox</code></td><td>Manifest, layers, permissions, signature</td></tr>
+                    <tr><td><code>blackbox verify pkg.blackbox</code></td><td>Checksums + signature verification</td></tr>
+                    <tr><td><code>blackbox unpack pkg.blackbox ./peek</code></td><td>Extract all layers for manual inspection</td></tr>
+                    <tr><td><code>blackbox audit pkg.blackbox</code></td><td>Static security scan before running</td></tr>
+                    <tr><td><code>blackbox explain pkg.blackbox</code></td><td>Human-readable permission summary</td></tr>
+                    <tr><td><code>blackbox diff a.blackbox b.blackbox</code></td><td>Compare two packages at checksum level</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="alt" id="trust">
+            <h2>Trust & Signing</h2>
+            <p class="section-lead">Optional Ed25519 signing + X25519 sealed secrets</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Create Keys</h3>
+                    <pre><code>blackbox keygen lab \
+  --publisher "Research Lab X"</code></pre>
+                </div>
+                <div class="feature-card">
+                    <h3>Sign Package</h3>
+                    <pre><code>blackbox sign pkg.blackbox \
+  --key lab</code></pre>
+                </div>
+                <div class="feature-card">
+                    <h3>Trust Publisher</h3>
+                    <pre><code>blackbox trust lab.pub.pem \
+  --publisher "Research Lab X"</code></pre>
+                </div>
+                <div class="feature-card">
+                    <h3>Seal Secrets</h3>
+                    <pre><code>blackbox seal pkg.blackbox \
+  --secrets .env \
+  --to lab.seal.pub.pem</code></pre>
+                </div>
+                <div class="feature-card">
+                    <h3>Encrypt Package</h3>
+                    <pre><code>blackbox encrypt pkg.blackbox \
+  --to recipient.seal.pub.pem</code></pre>
+                </div>
+                <div class="feature-card">
+                    <h3>Verify</h3>
+                    <pre><code>blackbox verify pkg.blackbox
+# → Signature: VALID - trusted publisher</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="advanced">
+            <h2>Advanced Features (v0.2+)</h2>
+            <p class="section-lead">New capabilities in the Rust rewrite</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>WASM Runtime</h3>
+                    <p><code>runtime: {type: wasm, version: "24.0.0"}</code> — wasmtime bundled, WASM is its own sandbox</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Rust Runtime</h3>
+                    <p><code>runtime: {type: rust, version: "1.85"}</code> — compiles <code>src/main.rs</code> at pack time with pinned toolchain</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Fat Packages</h3>
+                    <p><code>runtime.targets: [...]</code> — one package with per-target dependency layers</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Thin Packages</h3>
+                    <p><code>pack --thin</code> + <code>blackbox serve</code> — LAN mirrors, fetch layers on demand</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Composite Pipelines</h3>
+                    <p><code>blackbox compose</code> — wire multiple stages, output→input automatically</p>
+                </div>
+                <div class="feature-card">
+                    <h3>SBOM Export</h3>
+                    <p><code>blackbox sbom pkg --format spdx|cyclonedx</code> — from lockfile</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Self-Update</h3>
+                    <p><code>blackbox self-update <url></code> — signed binary swap, verifies publisher</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Docker Export</h3>
+                    <p><code>blackbox export-docker pkg</code> — generate Dockerfile + context</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="cache">
+            <h2>Cache & Deduplication</h2>
+            <p class="section-lead">Content-addressed store under <code>~/.blackbox/objects/sha256/…</code></p>
+
+            <table class="cli-table">
+                <thead>
+                    <tr><th>Command</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>blackbox cache</code></td><td>Statistics: objects, bytes, layers, runtimes</td></tr>
+                    <tr><td><code>blackbox cache --check</code></td><td>Re-hash every object (detects disk rot)</td></tr>
+                    <tr><td><code>blackbox list</code></td><td>List installed layers</td></tr>
+                    <tr><td><code>blackbox gc</code></td><td>Clean unreferenced objects (dry-run by default)</td></tr>
+                    <tr><td><code>blackbox gc --apply --older-than 30</code></td><td>Delete unused layers older than 30 days</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="alt" id="gui">
+            <h2>GUI Application</h2>
+            <p class="section-lead">Visual project manager for creating, editing, packing, and running packages</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Project Dashboard</h3>
+                    <p>Sidebar with all projects, filterable, shows pack/run status at a glance</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Visual Manifest Editor</h3>
+                    <p>Form-based editing with validation, or raw YAML with syntax highlighting</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Pack & Run Dialogs</h3>
+                    <p>Configure targets, thin packages, work dirs, inputs, entrypoints — all with file pickers</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Live Output Log</h3>
+                    <p>Real-time stdout/stderr with filtering, auto-scroll, crash bundle on failure</p>
+                </div>
+                <div class="feature-card">
+                    <h3>File Watching</h3>
+                    <p>Auto-reload manifest on external edits, watch mode for continuous packing</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Settings</h3>
+                    <p>Theme (light/dark), projects directory, default target, mirror URLs</p>
+                </div>
+            </div>
+
+            <pre style="margin-top: 2rem;"><code># Build and run the GUI
+cargo build --release --features gui
+./target/release/blackbox-gui</code></pre>
+        </section>
+
+        <section id="manifest">
+            <h2>Manifest Reference</h2>
+            <p class="section-lead">The <code>blackbox.yaml</code> contract — strict validation at pack time</p>
+
+            <pre><code>format_version: "1"
+name: "my-app"
+version: "1.0.0"
+description: "What this package does"
+publisher: "Your Name"
+
+runtime:
+  type: "python"        # python | node | native | wasm | rust | composite
+  version: "3.12"       # pinned version
+  target: "x86_64-unknown-linux-gnu"
+  targets: []           # optional: multi-target fat package
+
+entrypoint:
+  command: "python"     # must be "python" for python, "node" for node, "./bin/app" for native
+  args: ["main.py"]
+
+permissions:
+  filesystem:
+    read: ["./input", "./config"]
+    write: ["./output", "./data"]
+  network:
+    enabled: true
+    allow: ["api.example.com", "*.githubusercontent.com"]
+  process:
+    spawn: false
+
+limits:
+  memory_mb: 512
+  cpu_percent: 50
+  max_processes: 10
+
+entrypoints:            # optional subcommands
+  serve:
+    command: "python"
+    args: ["server.py"]
+  migrate:
+    command: "python"
+    args: ["migrate.py"]
+
+environment:
+  variables:
+    LOG_LEVEL: "info"
+    API_TIMEOUT: "30"
+
+interface:
+  type: "web"           # cli | web | gui
+  port: 8765
+
+requirements: "requirements.txt"  # or package.json for node</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <p>BLACKBOX v0.2.0 — Apache-2.0 Licensed</p>
+        <p>
+            <a href="https://github.com/blackbox-project/blackbox">GitHub</a>
+            <a href="https://hyperonx-team.github.io/blackbox/">Documentation</a>
+            <a href="https://github.com/blackbox-project/blackbox/issues">Issues</a>
+        </p>
+    </footer>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>

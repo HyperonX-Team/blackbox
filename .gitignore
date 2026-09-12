@@ -17,3 +17,7 @@ mkdocs.yml.bak
 
 /target
 /target-*
+
+# GUI build outputs and local screenshots
+/blackbox-gui.exe
+/gui-shot.png

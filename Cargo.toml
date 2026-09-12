@@ -10,6 +10,11 @@ authors = ["The BLACKBOX Project"]
 name = "blackbox"
 path = "src/main.rs"
 
+[[bin]]
+name = "blackbox-gui"
+path = "src/gui/main.rs"
+required-features = ["gui"]
+
 [lib]
 name = "blackbox_runtime"
 path = "src/lib.rs"
@@ -36,9 +41,20 @@ walkdir = "2"
 ureq = { version = "2", features = ["json"] }
 flate2 = "1"
 xz2 = "0.1"
+# GUI dependencies (optional)
+eframe = { version = "0.29", optional = true }
+egui = { version = "0.29", features = ["accesskit"], optional = true }
+rfd = { version = "0.12", optional = true }
+notify = { version = "6", optional = true }
+opener = { version = "0.6", optional = true }
+dirs = { version = "5", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[features]
+default = []
+gui = ["eframe", "egui", "rfd", "notify", "opener", "dirs"]
 
 [dev-dependencies]
 tempfile = "3"

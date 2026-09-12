@@ -1118,7 +1118,7 @@ impl RuntimeProvider for RustProvider {
 
 #[path = "runtime_runner.rs"]
 mod runner;
-pub use runner::{build_launch, execute, exec_interactive, RunContext, Launch, SHIM_NAMES};
+pub use runner::{build_launch, execute, execute_capture, exec_interactive, RunContext, Launch, SHIM_NAMES};
 
 /// Compatibility facade so callers can `crate::runtime::providers::...`.
 pub mod providers {

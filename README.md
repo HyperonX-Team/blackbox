@@ -199,18 +199,73 @@ science" layer for individuals. (Roadmap in [docs/roadmap.md](docs/roadmap.md).)
 
 ```
 src/                 the runtime & CLI (Rust, single static binary)
-  commands/          clap surface + all blackbox subcommands
-  packaging/         deterministic zip/tar format · builder · reader
-  manifest/          blackbox.yaml parsing + strict validation
-  dependency/        lock resolution (pip/npm), hash-verified fetch
-  runtime/           providers: python · node · native · wasm · rust
-  sandbox/           policy + bwrap/sandbox-exec jails + shim install
-  storage/           content-addressed store (CAS) + mirror fetchers
-  crypto/            Ed25519 signing · X25519 + AES-256-GCM sealing
+  main.rs            clap CLI entry point
+  commands.rs        all blackbox subcommands
+  gui/               desktop GUI (egui) — project manager + YAML editor + pack/run
+    main.rs          blackbox-gui binary entry point
+    app.rs           application state & event loop
+    manifest_editor.rs  visual + raw YAML manifest editor
+    project_list.rs  project sidebar
+    pack_dialog.rs   pack dialog (target, thin, watch)
+    run_dialog.rs    run dialog (work dir, inputs, entrypoint)
+    log_view.rs      live output log panel
+    settings.rs      theme, projects dir, mirrors
+  packaging.rs       deterministic zip/tar format · builder · reader
+  manifest.rs        blackbox.yaml parsing + strict validation
+  dependency.rs      lock resolution (pip/npm), hash-verified fetch
+  runtime.rs         providers: python · node · native · wasm · rust
+  runtime_runner.rs  launch, isolation, capture
+  sandbox.rs         policy + bwrap/sandbox-exec jails + shim install
+  storage.rs         content-addressed store (CAS) + mirror fetchers
+  crypto.rs          Ed25519 signing · X25519 + AES-256-GCM sealing
 examples/            hello · datasift · research-repro (legacy Python templates still embedded)
 tests/               Rust integration tests (determinism, tamper, sign, e2e run)
 blackbox/            the previous Python reference implementation
 docs/                architecture · format · security · roadmap
+docs-site/           static how-to-use site deployed to GitHub Pages
+```
+
+## Desktop GUI (optional)
+
+The `blackbox-gui` binary is a visual project manager, manifest editor and
+pack/run front-end built with [egui](https://github.com/emilk/egui). It is
+feature-gated so the zero-dependency CLI build is unaffected.
+
+```bash
+# build (first build is slow — egui + eframe)
+cargo build --release --features gui --bin blackbox-gui
+
+# run
+./target/release/blackbox-gui
+```
+
+What it does:
+
+* **Projects sidebar** — create projects from templates, filter, open folders,
+  right-click to delete.
+* **Manifest editor** — switch between a validated *visual form* and *raw YAML*.
+  Errors are shown inline; `Ctrl+S` saves.
+* **Pack dialog** — pick output path, target triple, thin mode, watch mode.
+* **Run dialog** — work dir, input files, entrypoint subcommand, `--yes`,
+  `--data`, `--log`, and app arguments.
+* **Live log** — captured stdout/stderr with level filter, text filter and
+  auto-scroll.
+* **File watching** — external edits to `blackbox.yaml` reload into the editor.
+* **Settings** — theme, projects directory, default target, mirror URLs.
+
+The GUI calls the same library functions as the CLI (`packaging::pack`,
+`packaging::prepare_run`, `runtime::execute_capture`), so packages produced in
+the GUI are byte-identical to `blackbox pack`.
+
+## Documentation site
+
+The how-to-use site lives in [`docs-site/`](docs-site/) as a single static
+`index.html` (no build step, no mkdocs). It is deployed to GitHub Pages by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push to
+`main`. Preview locally with any static server:
+
+```bash
+cd docs-site && python -m http.server 8000
 ```
 
 ## New in the Rust rewrite (v0.2)

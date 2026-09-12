@@ -39,22 +39,34 @@ jobs:
           - os: ubuntu-22.04      # older glibc => broad Linux compatibility
             asset: blackbox-linux-x86_64
             out: blackbox
+            gui_asset: blackbox-gui-linux-x86_64
           - os: ubuntu-22.04-arm  # Linux ARM64 (free arm runner on public repos)
             asset: blackbox-linux-aarch64
             out: blackbox
+            gui_asset: blackbox-gui-linux-aarch64
           - os: macos-14          # primary mac target: Apple Silicon (ARM64)
             asset: blackbox-macos-aarch64
             out: blackbox
+            gui_asset: blackbox-gui-macos-aarch64
           # note: no free Intel macOS runner exists for this repo (macos-13 stays
           # queued forever), so x86_64 macOS binaries are not produced.
           - os: windows-latest
             asset: blackbox-windows-x86_64.exe
             out: blackbox.exe
+            gui_asset: blackbox-gui-windows-x86_64.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux GUI build deps (egui/eframe)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libssl-dev
 
       - name: Crate version
         id: crate
@@ -106,10 +118,25 @@ jobs:
         shell: bash
         run: cp "target/release/${{ matrix.out }}" "${{ matrix.asset }}"
 
+      - name: Build GUI release binary
+        run: cargo build --locked --release --features gui --bin blackbox-gui
+
+      - name: Rename GUI to platform asset
+        shell: bash
+        run: |
+          GUI=target/release/blackbox-gui
+          if [ ! -f "$GUI" ]; then GUI=target/release/blackbox-gui.exe; fi
+          cp "$GUI" "${{ matrix.gui_asset }}"
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.gui_asset }}
+          path: ${{ matrix.gui_asset }}
 
   # 2. Build per-platform example .blackbox appliances USING the released binary.
   build-examples:

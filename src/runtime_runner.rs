@@ -466,3 +466,38 @@ fn crash_bundle(ctx: &RunContext, rc: i32, tail: &[String]) {
         println!("BLACKBOX: wrote crash bundle {}", p.display());
     }
 }
+
+/// Execute and capture stdout/stderr for GUI
+pub fn execute_capture(ctx: &RunContext, extra_args: Option<&[String]>) -> Result<(String, String, i32), BlackboxError> {
+    let launch = build_launch(ctx, extra_args, None)?;
+
+    let mut child = spawn_child(&launch)?;
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    let mut stdout_buf = String::new();
+    let mut stderr_buf = String::new();
+
+    if let Some(mut stream) = stdout {
+        use std::io::Read;
+        let _ = stream.read_to_string(&mut stdout_buf);
+    }
+    if let Some(mut stream) = stderr {
+        use std::io::Read;
+        let _ = stream.read_to_string(&mut stderr_buf);
+    }
+
+    let rc = child.wait().map(|s| s.code().unwrap_or(1)).unwrap_or(1);
+
+    if rc != 0 {
+        let mut tail = Vec::new();
+        for line in stdout_buf.lines().chain(stderr_buf.lines()).take(120) {
+            tail.push(line.to_string());
+        }
+        crash_bundle(ctx, rc, &tail);
+    }
+
+    Ok((stdout_buf, stderr_buf, rc))
+}
+
