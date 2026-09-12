@@ -33,50 +33,70 @@ SOURCE PROJECT          datasift.blackbox           ANOTHER MACHINE
 
 ## Install
 
-**Prebuilt downloads (recommended — nothing else to install):** every release
-ships both the `blackbox` CLI and the `blackbox-gui` desktop app, for every
-platform. Grab them from
+**Installers (recommended):** every release ships installers that put both
+programs on your PATH, plus portable archives for machines where you would
+rather not run one. Grab them from
 [GitHub Releases](https://github.com/HyperonX-Team/blackbox/releases).
 
-| Platform | Format | What's inside |
-|----------|--------|---------------|
-| Linux x86_64 | `blackbox_<ver>_amd64.deb` + `blackbox-gui_<ver>_amd64.deb` | CLI + GUI |
-| Linux arm64 | `blackbox_<ver>_arm64.deb` + `blackbox-gui_<ver>_arm64.deb` | CLI + GUI |
-| Linux (any) | `blackbox-linux-<arch>.tar.gz` | `blackbox` + `blackbox-gui` |
-| macOS (Apple Silicon) | `blackbox-macos-aarch64.tar.gz` | `blackbox` + `blackbox-gui` |
-| Windows x86_64 | `blackbox-windows-x86_64.zip` | `blackbox.exe` + `blackbox-gui.exe` |
-| Any | raw `blackbox-*` / `blackbox-gui-*` | single binaries |
+| Platform | Installer | Also available |
+|----------|-----------|----------------|
+| Windows x86_64 | `blackbox-setup-windows-x86_64.exe` | `blackbox-windows-x86_64.zip` |
+| macOS (Apple Silicon) | `blackbox-<ver>-macos-aarch64.pkg` | `blackbox-macos-aarch64.tar.gz` |
+| Debian / Ubuntu | `blackbox_<ver>_amd64.deb` + `blackbox-gui_<ver>_amd64.deb` | `blackbox-linux-amd64.tar.gz` |
+| Fedora / RHEL / openSUSE | `blackbox-<ver>-1.x86_64.rpm` | `blackbox-linux-amd64.tar.gz` |
+| Any Linux / macOS | `install.sh` | `blackbox-linux-<arch>.tar.gz` |
+| Any Windows | `install.ps1` | `blackbox-windows-x86_64.zip` |
+
+Every installer places `blackbox` and `blackbox-gui` on the PATH, so
+`blackbox doctor` works in a fresh terminal.
+
+**One line (Linux and macOS):**
+```bash
+curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh
+```
+
+The script detects the OS and architecture, downloads the matching archive,
+checks it against the release `SHA256SUMS.txt` and installs to `/usr/local/bin`
+(or `~/.local/bin` when it cannot write there). Override with
+`BLACKBOX_PREFIX`, `BLACKBOX_VERSION` or `BLACKBOX_NO_SUDO=1`.
+
+**One line (Windows, PowerShell):**
+```powershell
+irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex
+```
 
 **Debian / Ubuntu:**
 ```bash
 sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
 blackbox doctor
-blackbox-gui            # launch the desktop app (appears in your menu too)
+blackbox-gui            # launch the desktop app (it is in your menu too)
 ```
 
-**Portable tarball (Linux / macOS):**
+**Fedora / RHEL / openSUSE:**
 ```bash
-tar xzf blackbox-linux-x86_64.tar.gz
-sudo install -m755 blackbox-linux-x86_64/blackbox /usr/local/bin/blackbox
-sudo install -m755 blackbox-linux-x86_64/blackbox-gui /usr/local/bin/blackbox-gui
-blackbox doctor
-```
-```bash
-# macOS: first launch may need to clear quarantine
-xattr -d com.apple.quarantine blackbox-macos-aarch64/blackbox
-xattr -d com.apple.quarantine blackbox-macos-aarch64/blackbox-gui
+sudo dnf install ./blackbox-*-1.x86_64.rpm
 ```
 
-**Windows:** unzip `blackbox-windows-x86_64.zip` and run `blackbox.exe`
-(command line) or `blackbox-gui.exe` (desktop app).
+**Windows installer:** run `blackbox-setup-windows-x86_64.exe`. It is a per-user
+install, adds itself to your PATH and creates a Start Menu entry.
+
+**macOS:** open the `.pkg`, or unpack the tarball into `/usr/local/bin`.
+```bash
+tar xzf blackbox-macos-aarch64.tar.gz
+sudo install -m755 blackbox-macos-aarch64/blackbox     /usr/local/bin/blackbox
+sudo install -m755 blackbox-macos-aarch64/blackbox-gui /usr/local/bin/blackbox-gui
+# first launch may need to clear quarantine
+xattr -d com.apple.quarantine /usr/local/bin/blackbox
+xattr -d com.apple.quarantine /usr/local/bin/blackbox-gui
+```
 
 Verify any download against `SHA256SUMS.txt` from the same release.
 
 Releases are cut automatically by GitHub Actions:
 
 * every push to `main` → `v<crate>-build.<n>` release with all binaries,
-  `.deb` packages, `.tar.gz`/`.zip` archives, `SHA256SUMS.txt` and
-  per-platform example appliances;
+  installers (`.deb`, `.rpm`, `.pkg`, Windows `.exe`), portable archives,
+  `install.sh`/`install.ps1`, `SHA256SUMS.txt` and per-platform examples;
 * a tag like `v0.2.0` (must match `Cargo.toml`) → the versioned release.
 
 **Python route** — Python 3.9+ on the machine *running* BLACKBOX (the CLI itself). Package
@@ -251,7 +271,7 @@ tests/               Rust integration tests (determinism, tamper, sign, e2e run)
 blackbox/            the previous Python reference implementation
 docs/                architecture · format · security · roadmap
 docs-site/           static how-to-use site deployed to GitHub Pages
-packaging/           make-deb.sh (.deb builder) · blackbox-gui.desktop · PyInstaller spec
+packaging/           install.sh · install.ps1 · make-deb.sh · rpm/ · macos/ · windows/ · blackbox-gui.desktop
 ```
 
 ## Desktop GUI (optional)

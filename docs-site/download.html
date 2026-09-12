@@ -39,6 +39,19 @@
       <span class="spinner" id="release-status">Looking up the latest release…</span>
     </div>
 
+    <div class="split" style="margin-top:44px">
+      <div>
+        <h3>Linux and macOS, one line</h3>
+        <p>The script works out which machine it is on, downloads the matching archive, checks it against the published hashes and puts both programs on your PATH.</p>
+<pre><span class="p">$</span> curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh</pre>
+      </div>
+      <div>
+        <h3>Windows, one line</h3>
+        <p>The same idea in PowerShell: it installs per user, adds the directory to your PATH and leaves the environment untouched otherwise.</p>
+<pre><span class="p">&gt;</span> irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex</pre>
+      </div>
+    </div>
+
     <div class="groups" id="groups" hidden></div>
 
     <noscript>
@@ -87,16 +100,19 @@
   }
 
   function groupOf(name) {
-    if (name.endsWith(".deb")) return "Linux packages";
+    if (/\.(deb|rpm|pkg)$/i.test(name)) return "Installers";
+    if (/setup.*\.exe$/i.test(name)) return "Installers";
+    if (/^install\.(sh|ps1)$/i.test(name)) return "Install scripts";
     if (/SHA256SUMS/i.test(name)) return "Checksums";
     if (/macos/i.test(name)) return "macOS";
     if (/windows/i.test(name)) return "Windows";
     if (/linux/i.test(name)) return "Linux";
     return "Also in this release";
   }
-  var order = ["Linux packages", "Linux", "macOS", "Windows", "Checksums", "Also in this release"];
+  var order = ["Installers", "Install scripts", "Linux", "macOS", "Windows", "Checksums", "Also in this release"];
   var hint = {
-    "Linux packages": "Installs to /usr/bin and registers the desktop app. Use apt install ./file.deb so the dependencies are pulled in.",
+    "Installers": "These put blackbox and blackbox-gui on your PATH for you. Debian and Ubuntu use the .deb, Fedora and RHEL use the .rpm, macOS uses the .pkg, Windows uses the setup .exe.",
+    "Install scripts": "One line each. They detect the machine, download the right archive, check it against SHA256SUMS.txt and install it.",
     "Linux": "Unpack anywhere. The tarball holds both blackbox and blackbox-gui.",
     "macOS": "Unpack anywhere. Apple Silicon. First run may need the quarantine attribute cleared.",
     "Windows": "Unzip and run blackbox.exe for the command line, blackbox-gui.exe for the app.",

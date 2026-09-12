@@ -267,6 +267,110 @@ jobs:
             *.tar.gz
             *.zip
 
+  # 1d. Distributable installers that put the programs on the PATH.
+  package-installers:
+    name: Installer (${{ matrix.name }})
+    needs: build-binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: rpm-x86_64
+            kind: rpm
+            arch: x86_64
+            cli: blackbox-linux-x86_64
+            gui: blackbox-gui-linux-x86_64
+          - os: ubuntu-22.04-arm
+            name: rpm-aarch64
+            kind: rpm
+            arch: aarch64
+            cli: blackbox-linux-aarch64
+            gui: blackbox-gui-linux-aarch64
+          - os: macos-14
+            name: macos-pkg
+            kind: pkg
+            cli: blackbox-macos-aarch64
+            gui: blackbox-gui-macos-aarch64
+          - os: windows-latest
+            name: windows-setup
+            kind: inno
+            cli: blackbox-windows-x86_64.exe
+            gui: blackbox-gui-windows-x86_64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.cli }}
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.gui }}
+          path: dist/gui
+
+      - name: Crate version
+        id: v
+        shell: bash
+        run: echo "v=$(sed -n 's/^version *= *\"\(.*\)\"/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Install rpm tooling
+        if: matrix.kind == 'rpm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Build RPM
+        if: matrix.kind == 'rpm'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/rpm/build-rpm.sh "${{ steps.v.outputs.v }}" "${{ matrix.arch }}" \
+            "dist/${{ matrix.cli }}" "dist/gui/${{ matrix.gui }}" \
+            packaging/blackbox-gui.desktop docs/assets/blackbox-logo.svg
+          mkdir -p out
+          mv ./*.rpm out/
+
+      - name: Build macOS pkg
+        if: matrix.kind == 'pkg'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          bash packaging/macos/build-pkg.sh "${{ steps.v.outputs.v }}" \
+            "dist/${{ matrix.cli }}" "dist/gui/${{ matrix.gui }}" \
+            "out/blackbox-${{ steps.v.outputs.v }}-macos-aarch64.pkg"
+
+      - name: Install Inno Setup
+        if: matrix.kind == 'inno'
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Windows installer
+        if: matrix.kind == 'inno'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item "dist/${{ matrix.cli }}" "dist/blackbox.exe" -Force
+          Copy-Item "dist/gui/${{ matrix.gui }}" "dist/blackbox-gui.exe" -Force
+          $candidates = @(
+            'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+            'C:\Program Files\Inno Setup 6\ISCC.exe'
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe not found after installing Inno Setup' }
+          & $iscc "/DAppVersion=${{ steps.v.outputs.v }}" '/DStageDir=dist' 'packaging\windows\blackbox.iss'
+          Move-Item 'blackbox-setup-windows-x86_64.exe' 'out/' -Force
+          Get-ChildItem out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.name }}
+          path: out/*
+
   # 2. Build per-platform example .blackbox appliances USING the released binary.
   #    Best-effort: a flaky runtime download must never block the release.
   build-examples:
@@ -339,7 +443,7 @@ jobs:
   # 4. Aggregate everything into a GitHub Release.
   #    Runs as long as the core binaries built, even if example packing failed.
   release:
-    needs: [build-binaries, package-linux, package-other, build-examples, build-wheel]
+    needs: [build-binaries, package-linux, package-other, package-installers, build-examples, build-wheel]
     if: ${{ !cancelled() && needs.build-binaries.result == 'success' }}
     runs-on: ubuntu-22.04
     steps:
@@ -379,6 +483,8 @@ jobs:
             done
             rm -rf "$d"
           done
+          # ship the one-line installers as release assets too
+          cp packaging/install.sh packaging/install.ps1 out/
           ls -R out
 
       - name: Compute release tag (+ stamp checksums)
@@ -421,35 +527,41 @@ jobs:
             ## Download a machine
 
             Every platform ships **two** programs: the `blackbox` CLI and the
-            `blackbox-gui` desktop app. Pick whichever format you like.
+            `blackbox-gui` desktop app. Installers put both on your PATH.
 
-            | Platform | Installer / archive |
-            |----------|---------------------|
-            | Linux x86_64 / arm64 | `blackbox_*_amd64.deb`, `blackbox-gui_*_amd64.deb` (double-click, or `sudo apt install ./file.deb`) |
-            | Linux (any) | `blackbox-linux-*.tar.gz` |
-            | macOS (Apple Silicon) | `blackbox-macos-aarch64.tar.gz` |
-            | Windows x86_64 | `blackbox-windows-x86_64.zip` (contains both `.exe`s) |
-            | Any | raw `blackbox-*` / `blackbox-gui-*` binaries |
+            | Platform | Installer | Archives |
+            |----------|-----------|----------|
+            | Windows x86_64 | `blackbox-setup-windows-x86_64.exe` | `blackbox-windows-x86_64.zip` |
+            | macOS (Apple Silicon) | `*-macos-aarch64.pkg` | `blackbox-macos-aarch64.tar.gz` |
+            | Debian / Ubuntu | `blackbox_*_amd64.deb` + `blackbox-gui_*_amd64.deb` | `blackbox-linux-amd64.tar.gz` |
+            | Fedora / RHEL / openSUSE | `blackbox-*-1.x86_64.rpm` | `blackbox-linux-amd64.tar.gz` |
+            | Any Linux / macOS | `install.sh` | `blackbox-linux-*.tar.gz` |
+            | Any Windows | `install.ps1` | `blackbox-windows-x86_64.zip` |
 
-            ### Debian / Ubuntu
+            ### One line
+            ```sh
+            # Linux and macOS
+            curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh
+            ```
+            ```powershell
+            # Windows
+            irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex
+            ```
+
+            ### Debian and Ubuntu
             ```bash
             sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
             blackbox doctor
-            blackbox-gui          # launch the desktop app
             ```
 
-            ### Portable binary
-            ```bash
-            tar xzf blackbox-linux-x86_64.tar.gz
-            sudo install -m755 blackbox-linux-x86_64/blackbox /usr/local/bin/blackbox
-            blackbox doctor
-            ```
+            ### macOS
+            Open the `.pkg`, or unpack the tarball and put both files in `/usr/local/bin`.
 
             ### Windows
-            Unzip `blackbox-windows-x86_64.zip` and run `blackbox.exe`
-            (command line) or `blackbox-gui.exe` (desktop app).
+            Run `blackbox-setup-windows-x86_64.exe`. It installs per user, adds
+            itself to your PATH and creates a Start Menu entry.
 
-            Verify everything against `SHA256SUMS.txt`, then try a demo:
+            Verify any download against `SHA256SUMS.txt`, then try a demo:
             ```bash
             blackbox init hello && cd hello && blackbox pack && blackbox run hello.blackbox
             ```
