@@ -33,23 +33,51 @@ SOURCE PROJECT          datasift.blackbox           ANOTHER MACHINE
 
 ## Install
 
-**Prebuilt binaries (recommended — nothing else to install):** grab
-`blackbox-linux-x86_64`, `blackbox-macos-aarch64`, or
-`blackbox-windows-x86_64.exe` from [GitHub Releases](https://github.com/blackbox-project/blackbox/releases),
-then:
+**Prebuilt downloads (recommended — nothing else to install):** every release
+ships both the `blackbox` CLI and the `blackbox-gui` desktop app, for every
+platform. Grab them from
+[GitHub Releases](https://github.com/HyperonX-Team/blackbox/releases).
+
+| Platform | Format | What's inside |
+|----------|--------|---------------|
+| Linux x86_64 | `blackbox_<ver>_amd64.deb` + `blackbox-gui_<ver>_amd64.deb` | CLI + GUI |
+| Linux arm64 | `blackbox_<ver>_arm64.deb` + `blackbox-gui_<ver>_arm64.deb` | CLI + GUI |
+| Linux (any) | `blackbox-linux-<arch>.tar.gz` | `blackbox` + `blackbox-gui` |
+| macOS (Apple Silicon) | `blackbox-macos-aarch64.tar.gz` | `blackbox` + `blackbox-gui` |
+| Windows x86_64 | `blackbox-windows-x86_64.zip` | `blackbox.exe` + `blackbox-gui.exe` |
+| Any | raw `blackbox-*` / `blackbox-gui-*` | single binaries |
+
+**Debian / Ubuntu:**
 ```bash
-chmod +x blackbox-linux-x86_64
-sudo install -m755 blackbox-linux-x86_64 /usr/local/bin/blackbox   # on PATH, done
+sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
 blackbox doctor
+blackbox-gui            # launch the desktop app (appears in your menu too)
 ```
 
-(The macOS binary is unsigned in v0.1: first run may need
-`xattr -d com.apple.quarantine blackbox-macos-aarch64`.)
+**Portable tarball (Linux / macOS):**
+```bash
+tar xzf blackbox-linux-x86_64.tar.gz
+sudo install -m755 blackbox-linux-x86_64/blackbox /usr/local/bin/blackbox
+sudo install -m755 blackbox-linux-x86_64/blackbox-gui /usr/local/bin/blackbox-gui
+blackbox doctor
+```
+```bash
+# macOS: first launch may need to clear quarantine
+xattr -d com.apple.quarantine blackbox-macos-aarch64/blackbox
+xattr -d com.apple.quarantine blackbox-macos-aarch64/blackbox-gui
+```
 
-Releases are cut automatically by GitHub Actions: every push to `main`
-publishes a `v<crate>-build.<n>` release with all four binaries +
-`SHA256SUMS.txt` + per-platform example appliances; pushing a tag like
-`v0.2.0` (must match `Cargo.toml`) publishes the versioned release.
+**Windows:** unzip `blackbox-windows-x86_64.zip` and run `blackbox.exe`
+(command line) or `blackbox-gui.exe` (desktop app).
+
+Verify any download against `SHA256SUMS.txt` from the same release.
+
+Releases are cut automatically by GitHub Actions:
+
+* every push to `main` → `v<crate>-build.<n>` release with all binaries,
+  `.deb` packages, `.tar.gz`/`.zip` archives, `SHA256SUMS.txt` and
+  per-platform example appliances;
+* a tag like `v0.2.0` (must match `Cargo.toml`) → the versioned release.
 
 **Python route** — Python 3.9+ on the machine *running* BLACKBOX (the CLI itself). Package
 recipients never need any language runtime on the host — BLACKBOX brings its
@@ -223,6 +251,7 @@ tests/               Rust integration tests (determinism, tamper, sign, e2e run)
 blackbox/            the previous Python reference implementation
 docs/                architecture · format · security · roadmap
 docs-site/           static how-to-use site deployed to GitHub Pages
+packaging/           make-deb.sh (.deb builder) · blackbox-gui.desktop · PyInstaller spec
 ```
 
 ## Desktop GUI (optional)
@@ -231,8 +260,12 @@ The `blackbox-gui` binary is a visual project manager, manifest editor and
 pack/run front-end built with [egui](https://github.com/emilk/egui). It is
 feature-gated so the zero-dependency CLI build is unaffected.
 
+**Prebuilt** — every release includes it: `blackbox-gui_<ver>_<arch>.deb` on
+Linux, `blackbox-gui` inside the `.tar.gz` on Linux/macOS, and
+`blackbox-gui.exe` inside the `.zip` on Windows (see [Install](#install)).
+
 ```bash
-# build (first build is slow — egui + eframe)
+# build from source (first build is slow — egui + eframe)
 cargo build --release --features gui --bin blackbox-gui
 
 # run
@@ -260,9 +293,17 @@ the GUI are byte-identical to `blackbox pack`.
 ## Documentation site
 
 The how-to-use site lives in [`docs-site/`](docs-site/) as a single static
-`index.html` (no build step, no mkdocs). It is deployed to GitHub Pages by
+`index.html` (no build step, no mkdocs). It is published to GitHub Pages at
+<https://hyperonx-team.github.io/blackbox/> by
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push to
-`main`. Preview locally with any static server:
+`main`.
+
+The workflow pushes the site to a `gh-pages` branch (rather than using the
+`actions/deploy-pages` environment) so it is not blocked by `github-pages`
+environment protection rules. One-time repo setup: **Settings → Pages → Build
+and deployment → Source = “Deploy from a branch”, Branch = `gh-pages` / `(root)`**.
+
+Preview locally with any static server:
 
 ```bash
 cd docs-site && python -m http.server 8000

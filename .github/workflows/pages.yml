@@ -1,37 +1,49 @@
-name: Deploy to GitHub Pages
+name: Deploy docs to GitHub Pages
+
+# Publishes docs-site/ to the `gh-pages` branch.
+#
+# Why branch-based instead of actions/deploy-pages: the `github-pages`
+# environment can carry a "deployment branches" protection rule that rejects
+# pushes from `main` ("Branch 'main' is not allowed to deploy to github-pages").
+# Pushing a plain `gh-pages` branch with GITHUB_TOKEN avoids that environment
+# entirely and works on every repository configuration.
+#
+# One-time setup: Settings -> Pages -> Build and deployment ->
+#   Source = "Deploy from a branch", Branch = `gh-pages` / `(root)`.
 
 on:
   push:
     branches: [main]
+    paths:
+      - "docs-site/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages"
+  group: pages-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload docs-site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./docs-site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish docs-site to the gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd docs-site
+          touch .nojekyll
+          git init -q
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy docs-site from ${GITHUB_SHA::7}"
+          git branch -M gh-pages
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin gh-pages

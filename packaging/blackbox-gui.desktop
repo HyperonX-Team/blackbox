@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=BLACKBOX
+GenericName=Portable Appliance Manager
+Comment=Download a machine - pack and run portable computational appliances
+Exec=blackbox-gui
+Icon=blackbox-gui
+Terminal=false
+Categories=Development;Utility;Science;
+Keywords=blackbox;package;reproducible;portable;appliance;container;
+StartupNotify=true

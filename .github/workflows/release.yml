@@ -138,6 +138,135 @@ jobs:
           name: ${{ matrix.gui_asset }}
           path: ${{ matrix.gui_asset }}
 
+  # 1b. Linux packages: .deb (CLI + GUI) and a portable .tar.gz.
+  package-linux:
+    name: Linux packages (${{ matrix.arch }})
+    needs: build-binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+            cli: blackbox-linux-x86_64
+            gui: blackbox-gui-linux-x86_64
+          - os: ubuntu-22.04-arm
+            arch: arm64
+            cli: blackbox-linux-aarch64
+            gui: blackbox-gui-linux-aarch64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.cli }}
+          path: dl/cli
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.gui }}
+          path: dl/gui
+
+      - name: Crate version
+        id: v
+        shell: bash
+        run: echo "v=$(sed -n 's/^version *= *\"\(.*\)\"/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build .deb (CLI)
+        shell: bash
+        run: |
+          bash packaging/make-deb.sh blackbox "${{ steps.v.outputs.v }}" \
+            "${{ matrix.arch }}" "dl/cli/${{ matrix.cli }}"
+
+      - name: Build .deb (GUI)
+        shell: bash
+        run: |
+          bash packaging/make-deb.sh blackbox-gui "${{ steps.v.outputs.v }}" \
+            "${{ matrix.arch }}" "dl/gui/${{ matrix.gui }}" \
+            packaging/blackbox-gui.desktop docs/assets/blackbox-logo.svg
+
+      - name: Build portable .tar.gz
+        shell: bash
+        run: |
+          set -euo pipefail
+          d="blackbox-linux-${{ matrix.arch }}"
+          mkdir -p "$d"
+          cp "dl/cli/${{ matrix.cli }}" "$d/blackbox"
+          cp "dl/gui/${{ matrix.gui }}" "$d/blackbox-gui"
+          chmod +x "$d/blackbox" "$d/blackbox-gui"
+          tar -czf "blackbox-linux-${{ matrix.arch }}.tar.gz" "$d"
+          ls -l "$d" "blackbox-linux-${{ matrix.arch }}.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-pkgs-${{ matrix.arch }}
+          path: |
+            *.deb
+            *.tar.gz
+
+  # 1c. macOS + Windows portable archives (no installer tooling needed).
+  package-other:
+    name: Archive (${{ matrix.name }})
+    needs: build-binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: macos-aarch64
+            cli: blackbox-macos-aarch64
+            gui: blackbox-gui-macos-aarch64
+            kind: tar
+          - os: windows-latest
+            name: windows-x86_64
+            cli: blackbox-windows-x86_64.exe
+            gui: blackbox-gui-windows-x86_64.exe
+            kind: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.cli }}
+          path: dl/cli
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.gui }}
+          path: dl/gui
+
+      - name: Assemble .tar.gz (macOS)
+        if: matrix.kind == 'tar'
+        shell: bash
+        run: |
+          set -euo pipefail
+          d="blackbox-${{ matrix.name }}"
+          mkdir -p "$d"
+          cp "dl/cli/${{ matrix.cli }}" "$d/blackbox"
+          cp "dl/gui/${{ matrix.gui }}" "$d/blackbox-gui"
+          chmod +x "$d/blackbox" "$d/blackbox-gui"
+          tar -czf "blackbox-${{ matrix.name }}.tar.gz" "$d"
+          ls -l "blackbox-${{ matrix.name }}.tar.gz"
+
+      - name: Assemble .zip (Windows)
+        if: matrix.kind == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "pkg" | Out-Null
+          Copy-Item "dl/cli/${{ matrix.cli }}" "pkg/blackbox.exe"
+          Copy-Item "dl/gui/${{ matrix.gui }}" "pkg/blackbox-gui.exe"
+          Compress-Archive -Path "pkg/*" -DestinationPath "blackbox-${{ matrix.name }}.zip" -Force
+          Get-ChildItem "blackbox-${{ matrix.name }}.zip" | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: other-pkgs-${{ matrix.name }}
+          path: |
+            *.tar.gz
+            *.zip
+
   # 2. Build per-platform example .blackbox appliances USING the released binary.
   build-examples:
     needs: build-binaries
@@ -207,7 +336,7 @@ jobs:
 
   # 4. Aggregate everything into a GitHub Release.
   release:
-    needs: [build-binaries, build-examples, build-wheel]
+    needs: [build-binaries, package-linux, package-other, build-examples, build-wheel]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -268,7 +397,13 @@ jobs:
             name="v$ver-build.${GITHUB_RUN_NUMBER}"
           fi
           echo "name=$name" >> "$GITHUB_OUTPUT"
-          (cd out && sha256sum blackbox-* > SHA256SUMS.txt)
+          (
+            cd out
+            for f in *; do
+              [ "$f" = "SHA256SUMS.txt" ] && continue
+              sha256sum "$f"
+            done > SHA256SUMS.txt
+          )
           cat out/SHA256SUMS.txt
 
       - name: Create / update GitHub Release
@@ -281,30 +416,45 @@ jobs:
           body: |
             ## Download a machine
 
-            **Pick the `blackbox` binary for your OS** — a single static binary,
-            nothing to install (no Python, no runtime):
+            Every platform ships **two** programs: the `blackbox` CLI and the
+            `blackbox-gui` desktop app. Pick whichever format you like.
 
+            | Platform | Installer / archive |
+            |----------|---------------------|
+            | Linux x86_64 / arm64 | `blackbox_*_amd64.deb`, `blackbox-gui_*_amd64.deb` (double-click, or `sudo apt install ./file.deb`) |
+            | Linux (any) | `blackbox-linux-*.tar.gz` |
+            | macOS (Apple Silicon) | `blackbox-macos-aarch64.tar.gz` |
+            | Windows x86_64 | `blackbox-windows-x86_64.zip` (contains both `.exe`s) |
+            | Any | raw `blackbox-*` / `blackbox-gui-*` binaries |
+
+            ### Debian / Ubuntu
             ```bash
-            chmod +x blackbox-linux-x86_64   # or blackbox-macos-aarch64 / -aarch64
-            sudo install -m755 blackbox-linux-x86_64 /usr/local/bin/blackbox
+            sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
+            blackbox doctor
+            blackbox-gui          # launch the desktop app
+            ```
+
+            ### Portable binary
+            ```bash
+            tar xzf blackbox-linux-x86_64.tar.gz
+            sudo install -m755 blackbox-linux-x86_64/blackbox /usr/local/bin/blackbox
             blackbox doctor
             ```
 
-            Windows: download `blackbox-windows-x86_64.exe` (rename to `blackbox.exe`
-            if you like).
+            ### Windows
+            Unzip `blackbox-windows-x86_64.zip` and run `blackbox.exe`
+            (command line) or `blackbox-gui.exe` (desktop app).
 
-            Verify the download against `SHA256SUMS.txt`, then try a demo immediately:
-
+            Verify everything against `SHA256SUMS.txt`, then try a demo:
             ```bash
             blackbox init hello && cd hello && blackbox pack && blackbox run hello.blackbox
             ```
 
             ### Example appliances (`.blackbox`, per platform)
             Files are tagged by the platform they were packed for (native/runtimes
-            are platform-specific). Node.js and native-runtime examples are built
-            from source in CI on request.
+            are platform-specific).
 
-            > Unsigned macOS/Linux binaries: first launch may need
+            > Unsigned macOS binaries: first launch may need
             > `xattr -d com.apple.quarantine blackbox-macos-aarch64` (macOS Gatekeeper).
             > Code-signing / notarization is tracked on the roadmap.
 
