@@ -529,63 +529,82 @@ jobs:
           )
           cat out/SHA256SUMS.txt
 
-      - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.rtag.outputs.name }}
-          name: BLACKBOX ${{ steps.rtag.outputs.name }}
-          generate_release_notes: true
-          files: out/*
-          body: |
-            ## Download a machine
+      - name: Write release notes
+        run: |
+          cat > RELEASE_NOTES.md <<'EOF'
+          ## Download a machine
 
-            Every platform ships **two** programs: the `blackbox` CLI and the
-            `blackbox-gui` desktop app. Installers put both on your PATH.
+          Every platform ships **two** programs: the `blackbox` CLI and the
+          `blackbox-gui` desktop app. Installers put both on your PATH.
 
-            | Platform | Installer | Archives |
-            |----------|-----------|----------|
-            | Windows x86_64 | `blackbox-setup-windows-x86_64.exe` | `blackbox-windows-x86_64.zip` |
-            | macOS (Apple Silicon) | `*-macos-aarch64.pkg` | `blackbox-macos-aarch64.tar.gz` |
-            | Debian / Ubuntu | `blackbox_*_amd64.deb` + `blackbox-gui_*_amd64.deb` | `blackbox-linux-amd64.tar.gz` |
-            | Fedora / RHEL / openSUSE | `blackbox-*-1.x86_64.rpm` | `blackbox-linux-amd64.tar.gz` |
-            | Any Linux / macOS | `install.sh` | `blackbox-linux-*.tar.gz` |
-            | Any Windows | `install.ps1` | `blackbox-windows-x86_64.zip` |
+          | Platform | Installer | Archives |
+          |----------|-----------|----------|
+          | Windows x86_64 | `blackbox-setup-windows-x86_64.exe` | `blackbox-windows-x86_64.zip` |
+          | macOS (Apple Silicon) | `blackbox-<ver>-macos-aarch64.pkg` | `blackbox-macos-aarch64.tar.gz` |
+          | Debian / Ubuntu | `blackbox_<ver>_amd64.deb` + `blackbox-gui_<ver>_amd64.deb` | `blackbox-linux-amd64.tar.gz` |
+          | Fedora / RHEL / openSUSE | `blackbox-<ver>-1.x86_64.rpm` | `blackbox-linux-amd64.tar.gz` |
+          | Any Linux / macOS | `install.sh` | `blackbox-linux-<arch>.tar.gz` |
+          | Any Windows | `install.ps1` | `blackbox-windows-x86_64.zip` |
 
-            ### One line
-            ```sh
-            # Linux and macOS
-            curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh
-            ```
-            ```powershell
-            # Windows
-            irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex
-            ```
+          ### One line
 
-            ### Debian and Ubuntu
-            ```bash
-            sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
-            blackbox doctor
-            ```
+          ```sh
+          # Linux and macOS
+          curl -fsSL https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.sh | sh
+          ```
 
-            ### macOS
-            Open the `.pkg`, or unpack the tarball and put both files in `/usr/local/bin`.
+          ```powershell
+          # Windows
+          irm https://github.com/HyperonX-Team/blackbox/releases/latest/download/install.ps1 | iex
+          ```
 
-            ### Windows
-            Run `blackbox-setup-windows-x86_64.exe`. It installs per user, adds
-            itself to your PATH and creates a Start Menu entry.
+          ### Debian and Ubuntu
 
-            Verify any download against `SHA256SUMS.txt`, then try a demo:
-            ```bash
-            blackbox init hello && cd hello && blackbox pack && blackbox run hello.blackbox
-            ```
+          ```bash
+          sudo apt install ./blackbox_*_amd64.deb ./blackbox-gui_*_amd64.deb
+          blackbox doctor
+          ```
 
-            ### Example appliances (`.blackbox`, per platform)
-            Files are tagged by the platform they were packed for (native/runtimes
-            are platform-specific).
+          ### macOS
 
-            > Unsigned macOS binaries: first launch may need
-            > `xattr -d com.apple.quarantine blackbox-macos-aarch64` (macOS Gatekeeper).
-            > Code-signing / notarization is tracked on the roadmap.
+          Open the `.pkg`, or unpack the tarball and put both files in `/usr/local/bin`.
+
+          ### Windows
+
+          Run `blackbox-setup-windows-x86_64.exe`. It installs per user, adds
+          itself to your PATH and creates a Start Menu entry.
+
+          Verify any download against `SHA256SUMS.txt`, then try a demo:
+
+          ```bash
+          blackbox init hello && cd hello && blackbox pack && blackbox run hello.blackbox
+          ```
+
+          ### Example appliances (`.blackbox`, per platform)
+
+          Files are tagged by the platform they were packed for (native runtimes
+          are platform specific).
+
+          > Unsigned macOS binaries: first launch may need
+          > `xattr -d com.apple.quarantine blackbox-macos-aarch64` (macOS Gatekeeper).
+          > Code-signing and notarization are tracked on the roadmap.
+          EOF
+          cat RELEASE_NOTES.md
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.rtag.outputs.name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG exists, uploading (clobber)"
+            gh release upload "$TAG" out/* --clobber
+          else
+            echo "creating release $TAG"
+            gh release create "$TAG" --title "BLACKBOX $TAG" --notes-file RELEASE_NOTES.md out/*
+          fi
+          gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 
   # 5. Optional PyPI publish via OIDC trusted publishing.
   #    Enable by: (a) creating the "pypi" environment, and (b) setting the
