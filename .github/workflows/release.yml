@@ -597,13 +597,32 @@ jobs:
           TAG: ${{ steps.rtag.outputs.name }}
         run: |
           set -euo pipefail
+
+          # The GitHub API is occasionally degraded; publishing should ride
+          # that out rather than fail a build that produced every artifact.
+          retry() {
+            attempt=0
+            until "$@"; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 6 ]; then
+                echo "gave up after $attempt attempts: $*" >&2
+                return 1
+              fi
+              echo "attempt $attempt failed; retrying in $((attempt * 15))s" >&2
+              sleep $((attempt * 15))
+            done
+          }
+
+          # Create the release first and upload separately, so a retry after a
+          # partial failure is idempotent (--clobber overwrites assets).
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "release $TAG exists, uploading (clobber)"
-            gh release upload "$TAG" out/* --clobber
+            echo "release $TAG already exists"
           else
-            echo "creating release $TAG"
-            gh release create "$TAG" --title "BLACKBOX $TAG" --notes-file RELEASE_NOTES.md out/*
+            retry gh release create "$TAG" --title "BLACKBOX $TAG" --notes-file RELEASE_NOTES.md
           fi
+
+          retry gh release upload "$TAG" out/* --clobber
+
           gh release view "$TAG" --json assets --jq '.assets[].name' | sort
 
   # 5. Optional PyPI publish via OIDC trusted publishing.
